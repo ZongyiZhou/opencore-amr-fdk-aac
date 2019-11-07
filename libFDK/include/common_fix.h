@@ -279,27 +279,29 @@ FDK_INLINE FIXP_SGL fAbs(FIXP_SGL x) { return fixabs_S(x); }
 FDK_INLINE INT fAbs(INT x) { return fixabs_I(x); }
 #endif
 
-  /* ********************************************************************************
-   */
+/* ********************************************************************************
+ */
 
 #include "clz.h"
 
+#ifndef FUNCTION_fixnormz64
 FDK_INLINE INT fNormz(INT64 x) {
-  INT clz = fixnormz_D((INT)(x >> 32));
-  if (clz == 32) clz += fixnormz_D((INT)x);
-  return clz;
+  UINT y = (UINT)(x >> 32);
+  if (y == 0) return fixnormz_D((INT)x) + 32;
+  return fixnormz_D(y);
 }
+#endif
 FDK_INLINE INT fNormz(FIXP_DBL x) { return fixnormz_D(x); }
 FDK_INLINE INT fNormz(FIXP_SGL x) { return fixnormz_S(x); }
 FDK_INLINE INT fNorm(FIXP_DBL x) { return fixnorm_D(x); }
 FDK_INLINE INT fNorm(FIXP_SGL x) { return fixnorm_S(x); }
 
-  /* ********************************************************************************
-   */
-  /* ********************************************************************************
-   */
-  /* ********************************************************************************
-   */
+/* ********************************************************************************
+ */
+/* ********************************************************************************
+ */
+/* ********************************************************************************
+ */
 
 #include "clz.h"
 #define fixp_abs(x) fAbs(x)

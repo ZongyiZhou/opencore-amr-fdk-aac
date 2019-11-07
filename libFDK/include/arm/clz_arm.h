@@ -116,13 +116,7 @@ amm-info@iis.fraunhofer.de
 
 #ifdef FUNCTION_fixnormz_D
 inline INT fixnormz_D(LONG value) {
-  INT result;
-#if defined(__ARM_ARCH_8__)
-  asm("clz %w0, %w1 " : "=r"(result) : "r"(value));
-#else
-  asm("clz %0, %1 " : "=r"(result) : "r"(value));
-#endif
-  return result;
+  return __builtin_clz(value);
 }
 #endif /* #ifdef FUNCTION_fixnormz_D */
 
@@ -136,13 +130,7 @@ inline INT fixnorm_D(LONG value) {
 
 #ifdef FUNCTION_fixnormz_S
 inline INT fixnormz_S(SHORT value) {
-  INT result;
-  result = (LONG)(value << 16);
-  if (result == 0)
-    result = 16;
-  else
-    result = fixnormz_D(result);
-  return result;
+  return fixnormz_D(value) - 16;
 }
 #endif /* #ifdef FUNCTION_fixnormz_S */
 
@@ -154,6 +142,13 @@ inline INT fixnorm_S(SHORT value) {
   return fixnormz_D(lvalue) - 1;
 }
 #endif /* #ifdef FUNCTION_fixnorm_S */
+
+#ifdef __ARM_ARCH_8__
+#define FUNCTION_fixnormz64
+inline INT fNormz(INT64 value) {
+  return __builtin_clzll(value);
+}
+#endif
 
 #endif
 
