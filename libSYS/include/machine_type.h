@@ -209,9 +209,8 @@ typedef unsigned long long UINT64;
 #endif
 #endif
 
-#if ((defined(__i686__) || defined(__i586__) || defined(__i386__) ||  \
-      defined(__x86_64__)) ||                                         \
-     (defined(_MSC_VER) && (defined(_M_IX86) || defined(_M_X64)))) && \
+#if ((defined(__i686__) || defined(__i586__) || defined(__i386__) || defined(__x86_64__)) || \
+     (defined(_MSC_VER) && !defined(NDEBUG) && (defined(_M_IX86) || defined(_M_X64)))) && \
     !defined(FDK_ASSERT_ENABLE)
 #define FDK_ASSERT_ENABLE
 #endif
