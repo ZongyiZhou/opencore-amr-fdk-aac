@@ -103,31 +103,18 @@ amm-info@iis.fraunhofer.de
 #ifndef SCRAMBLE_MIPS_H
 #define SCRAMBLE_MIPS_H
 
-#define FUNCTION_scramble
+#ifdef __GNUC__
 
-#if defined(FUNCTION_scramble)
-inline void scramble(FIXP_DBL *x, INT n) {
-  INT m, j;
-  int ldn = 1;
-  do {
-    ldn++;
-  } while ((1 << ldn) < n);
-
-  for (m = 1, j = 0; m < n - 1; m++) {
-    j = __builtin_mips_bitrev(m) >> (16 - ldn);
-
-    if (j > m) {
-      FIXP_DBL tmp;
-      tmp = x[2 * m];
-      x[2 * m] = x[2 * j];
-      x[2 * j] = tmp;
-
-      tmp = x[2 * m + 1];
-      x[2 * m + 1] = x[2 * j + 1];
-      x[2 * j + 1] = tmp;
-    }
-  }
+#define FUNCTION_bitreverse
+inline UINT bitreverse(UINT x, UINT clz) {
+  return __builtin_mips_bitrev(x) >> (clz - 16);
 }
+
+#endif /* Toolchain selection. */
+
+#ifdef __mips_dsp
+#define FUNCTION_scramble
+#define scramble(x, n) // scramble included in mips_fft32
 #endif
 
 #endif /* SCRAMBLE_MIPS_H */

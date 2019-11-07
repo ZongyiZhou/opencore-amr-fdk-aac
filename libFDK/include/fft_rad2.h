@@ -104,9 +104,10 @@ amm-info@iis.fraunhofer.de
 #define FFT_RAD2_H
 
 #include "common_fix.h"
+#include "scramble.h"
 
 /**
- * \brief Performe an inplace  complex valued FFT of 2^n length
+ * \brief Performe an inplace complex valued FFT of 2^n length
  *
  * \param x Input/Output data buffer. The input data must have at least 1 bit
  * scale headroom. The values are interleaved, real/imag pairs.
@@ -115,7 +116,13 @@ amm-info@iis.fraunhofer.de
  * values.
  * \param trigDataSize length of the sinetable "trigdata".
  */
-void dit_fft(FIXP_DBL *x, const INT ldn, const FIXP_STP *trigdata,
-             const INT trigDataSize);
+void dit_fft_impl(FIXP_DBL *x, const INT ldn, const FIXP_STP *trigdata,
+                  const INT trigDataSize);
+
+FDK_INLINE void dit_fft(FIXP_DBL *x, const INT ldn, const FIXP_STP *trigdata,
+                        const INT trigDataSize) {
+  scramble(x, ldn);
+  dit_fft_impl(x, ldn, trigdata, trigDataSize);
+}
 
 #endif /* FFT_RAD2_H */
