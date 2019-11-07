@@ -129,9 +129,6 @@ amm-info@iis.fraunhofer.de
 #if !defined(FUNCTION_fixnormz_S)
 #ifdef FUNCTION_fixnormz_D
 inline INT fixnormz_S(SHORT a) {
-  if (a < 0) {
-    return 0;
-  }
   return fixnormz_D((INT)(a)) - 16;
 }
 #else

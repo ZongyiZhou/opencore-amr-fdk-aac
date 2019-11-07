@@ -103,63 +103,82 @@ amm-info@iis.fraunhofer.de
 #if !defined(CLZ_X86_H)
 #define CLZ_X86_H
 
-#if defined(__GNUC__) && (defined(__x86__) || defined(__x86_64__))
+#ifdef __GNUC__
+
+#include <x86intrin.h>
 
 #define FUNCTION_fixnormz_D
 #define FUNCTION_fixnorm_D
 
 inline INT fixnormz_D(LONG value) {
-  INT result;
-
-  if (value != 0) {
-    result = __builtin_clz(value);
-  } else {
-    result = 32;
-  }
-  return result;
+#ifndef __LZCNT__
+  if (value == 0) return 32;
+#endif
+  return __builtin_clz(value);
 }
 
-inline INT fixnorm_D(LONG value) {
-  INT result;
-  if (value == 0) {
-    return 0;
-  }
-  if (value < 0) {
-    value = ~value;
-  }
-  result = fixnormz_D(value);
-  return result - 1;
+#ifdef __x86_64__
+#define FUNCTION_fixnormz64
+inline INT fNormz(INT64 value) {
+#ifndef __LZCNT__
+  if (value == 0) return 64;
+#endif
+  return __builtin_clzll(value);
 }
+#endif
 
-#elif (_MSC_VER > 1200) && (defined(_M_IX86) || defined(_M_X64))
+#elif _MSC_VER > 1200
 
 #include <intrin.h>
 
 #define FUNCTION_fixnormz_D
 #define FUNCTION_fixnorm_D
+#define FUNCTION_fixnormz_S
 
 inline INT fixnormz_D(LONG value) {
-  unsigned long result = 0;
-  unsigned char err;
-  err = _BitScanReverse(&result, value);
-  if (err) {
-    return 31 - result;
-  } else {
-    return 32;
-  }
+#ifdef __AVX2__
+  return _lzcnt_u32(value);
+#else
+  if (value == 0) return 32;
+  unsigned long result;
+  _BitScanReverse(&result, value);
+  return result ^ 31;
+#endif
 }
 
-inline INT fixnorm_D(LONG value) {
-  INT result;
-  if (value == 0) {
-    return 0;
-  }
-  if (value < 0) {
-    value = ~value;
-  }
-  result = fixnormz_D(value);
-  return result - 1;
+#ifdef _M_X64
+#define FUNCTION_fixnormz64
+inline INT fNormz(INT64 value) {
+#ifdef __AVX2__
+  return (INT)_lzcnt_u64(value);
+#else
+  if (value == 0) return 64;
+  unsigned long result;
+  _BitScanReverse64(&result, value);
+  return result ^ 63;
+#endif
+}
+#endif
+
+inline INT fixnormz_S(SHORT value) {
+#ifdef __AVX2__
+  return _lzcnt_u32(value) - 16;
+#else
+  if (value == 0) return 16;
+  unsigned long result;
+  _BitScanReverse(&result, value);
+  return result ^ 15;
+#endif
 }
 
 #endif /* toolchain */
+
+inline INT fixnorm_D(LONG value) {
+  if (value == 0) {
+    return 0;
+  }
+  value ^= value >> 31;
+  return fixnormz_D(value) - 1;
+}
+
 #endif /* !defined(CLZ_X86_H) */
