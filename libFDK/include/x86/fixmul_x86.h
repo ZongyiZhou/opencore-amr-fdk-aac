@@ -105,8 +105,14 @@ amm-info@iis.fraunhofer.de
 
 #if defined(__x86__)
 
+#define FUNCTION_fixmuldiv2_SD
+#define fixmuldiv2_SD(a, b) fixmuldiv2BitExact_SD(a, b)
+#define FUNCTION_fixmuldiv2_DS
+#define fixmuldiv2_DS(a, b) fixmuldiv2BitExact_DS(a, b)
+
 #if defined(_MSC_VER) && defined(_M_IX86)
 /* Intel x86 */
+#include <intrin.h>
 
 #define FUNCTION_fixmul_DD
 #define FUNCTION_fixmuldiv2_DD
@@ -115,31 +121,28 @@ amm-info@iis.fraunhofer.de
 #define FUNCTION_fixmulBitExact_DD
 #define fixmulBitExact_DD(a, b) fixmul_DD(a, b)
 
-#define FUNCTION_fixmuldiv2BitExact_DS
-#define fixmuldiv2BitExact_DS(a, b) fixmuldiv2_DS(a, b)
-
-#define FUNCTION_fixmulBitExact_DS
-#define fixmulBitExact_DS(a, b) fixmul_DS(a, b)
-
 inline INT fixmul_DD(INT a, const INT b) {
-  __asm
-  {
-    mov eax, a
-    imul b
-    shl edx, 1
-    mov a, edx
-  }
-  return a;
+  union {
+    INT64 i64;
+    struct {
+      UINT lo;
+      INT hi;
+    } i32;
+  } r;
+  r.i64 = __emul(a, b);
+  return r.i32.hi * 2;
 }
 
 inline INT fixmuldiv2_DD(INT a, const INT b) {
-  __asm
-  {
-    mov eax, a
-    imul b
-    mov a, edx
-  }
-  return a;
+  union {
+    INT64 i64;
+    struct {
+      UINT lo;
+      INT hi;
+    } i32;
+  } r;
+  r.i64 = __emul(a, b);
+  return r.i32.hi;
 }
 
 /* #############################################################################
@@ -155,27 +158,18 @@ inline INT fixmuldiv2_DD(INT a, const INT b) {
 #define FUNCTION_fixmulBitExact_DD
 #define fixmulBitExact_DD(a, b) fixmul_DD(a, b)
 
-#define FUNCTION_fixmuldiv2BitExact_DS
-#define fixmuldiv2BitExact_DS(a, b) fixmuldiv2_DS(a, b)
-
-#define FUNCTION_fixmulBitExact_DS
-#define fixmulBitExact_DS(a, b) fixmul_DS(a, b)
-
 inline INT fixmul_DD(INT a, const INT b) {
   INT result;
 
-  asm("imul %2;\n"
-      "shl $1, %0;\n"
-      : "=d"(result), "+a"(a)
-      : "r"(b));
+  asm("imul %2" : "=d"(result), "+a"(a) : "r"(b));
 
-  return result;
+  return result * 2;
 }
 
 inline INT fixmuldiv2_DD(INT a, const INT b) {
   INT result;
 
-  asm("imul %2;" : "=d"(result), "+a"(a) : "r"(b));
+  asm("imul %2" : "=d"(result), "+a"(a) : "r"(b));
 
   return result;
 }
