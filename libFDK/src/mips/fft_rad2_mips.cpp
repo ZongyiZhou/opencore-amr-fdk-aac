@@ -116,8 +116,8 @@ amm-info@iis.fraunhofer.de
 
 #include "mips_fft_twiddles.cpp"
 
-void dit_fft(FIXP_DBL *x, const INT ldn, const FIXP_STP *trigdata,
-             const INT trigDataSize) {
+void dit_fft_impl(FIXP_DBL *x, const INT ldn, const FIXP_STP *trigdata,
+                  const INT trigDataSize) {
   int i;
 
   int32c *din = (int32c *)x;

@@ -124,27 +124,31 @@ amm-info@iis.fraunhofer.de
 *****************************************************************************/
 #if !defined(FUNCTION_scramble)
 
+const UINT MIN_SCRAMBLE_SIZE_LOG2 = 6;
+const UINT MIN_SCRAMBLE_SIZE = (1 << MIN_SCRAMBLE_SIZE_LOG2);
+const UINT MAX_SCRAMBLE_SIZE = (1 << 9);
+
 /* default scramble functionality */
-inline void scramble(FIXP_DBL *x, INT length) {
-  INT m, k, j;
+inline void scramble(FIXP_DBL *x, INT n) {
+  UINT m, j;
+  UINT length = 1 << n;
   FDK_ASSERT(!(((INT)(INT64)x) & (ALIGNMENT_DEFAULT - 1)));
-  C_ALLOC_ALIGNED_CHECK(x);
-
-  for (m = 1, j = 0; m < length - 1; m++) {
-    {
-      for (k = length >> 1; (!((j ^= k) & k)); k >>= 1)
-        ;
-    }
-
+#ifdef FUNCTION_bitreverse
+  for (m = 1; m < length - 2; m++) {
+    j = bitreverse(m, 32 - n);
     if (j > m) {
-      FIXP_DBL tmp;
-      tmp = x[2 * m];
-      x[2 * m] = x[2 * j];
-      x[2 * j] = tmp;
+#else
+  extern SHORT bitrev_lut[];
+  SHORT *t = bitrev_lut + length - MIN_SCRAMBLE_SIZE;
 
-      tmp = x[2 * m + 1];
-      x[2 * m + 1] = x[2 * j + 1];
-      x[2 * j + 1] = tmp;
+  for (m = 1; m < length - 2; m++) {
+    j = t[m];
+    if (j) {
+#endif
+      INT64 *p = (INT64 *)x;
+      INT64 tmp = p[m];
+      p[m] = p[j];
+      p[j] = tmp;
     }
   }
 }

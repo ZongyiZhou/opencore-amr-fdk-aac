@@ -111,12 +111,11 @@ amm-info@iis.fraunhofer.de
 #define FUNCTION_dit_fft
 #if defined(FUNCTION_dit_fft)
 
-void dit_fft(FIXP_DBL *x, const INT ldn, const FIXP_STP *trigdata,
-             const INT trigDataSize) {
+void dit_fft_impl(FIXP_DBL *x, const INT ldn, const FIXP_STP *trigdata,
+                  const INT trigDataSize) {
   const INT n = 1 << ldn;
   INT i;
 
-  scramble(x, n);
   /*
    * 1+2 stage radix 4
    */

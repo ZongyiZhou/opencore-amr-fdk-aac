@@ -102,8 +102,6 @@ amm-info@iis.fraunhofer.de
 
 #include "fft_rad2.h"
 
-#include "scramble.h"
-
 #define __FFT_RAD2_CPP__
 
 #if defined(__arm__)
@@ -118,8 +116,7 @@ amm-info@iis.fraunhofer.de
 
     functionname: dit_fft (analysis)
     description:  dit-tukey-algorithm
-                  scrambles data at entry
-                  i.e. loop is made with scrambled data
+                  data already scrumbled
     returns:
     input:
     output:
@@ -128,14 +125,11 @@ amm-info@iis.fraunhofer.de
 
 #ifndef FUNCTION_dit_fft
 
-void dit_fft(FIXP_DBL *x, const INT ldn, const FIXP_STP *trigdata,
-             const INT trigDataSize) {
+void dit_fft_impl(FIXP_DBL *x, const INT ldn, const FIXP_STP *trigdata,
+                  const INT trigDataSize) {
   const INT n = 1 << ldn;
   INT trigstep, i, ldm;
 
-  C_ALLOC_ALIGNED_CHECK(x);
-
-  scramble(x, n);
   /*
    * 1+2 stage radix 4
    */
@@ -322,3 +316,73 @@ void dit_fft(FIXP_DBL *x, const INT ldn, const FIXP_STP *trigdata,
 }
 
 #endif
+
+
+#ifndef FUNCTION_bitreverse
+#if _MSC_VER >= 1200
+#include <intrin.h>
+#define bswap_16(x) _byteswap_ushort(x)
+#define bswap_32(x) _byteswap_ulong(x)
+#define bswap_64(x) _byteswap_uint64(x)
+#define HAVE_BSWAP
+#elif HAVE_BYTESWAP_H
+#include <byteswap.h>
+#define HAVE_BSWAP
+#endif // toolchain
+
+#ifdef HAVE_BSWAP
+#define FUNCTION_bitreverse
+inline UINT bitreverse(UINT x, UINT clz) {
+  x = ((x & 0xF0F0F0F0) >> 4) | ((x & 0x0F0F0F0F) << 4);
+  x = ((x & 0xCCCCCCCC) >> 2) | ((x & 0x33333333) << 2);
+  x = ((x & 0xAAAAAAAA) >> 1) | ((x & 0x55555555) << 1);
+  return bswap_32(x) >> clz;
+}
+#endif // HAVE_BSWAP
+
+inline UINT bitreverse_byte(UINT x, UINT clz) {
+  x = (x >> 4) | (x << 4);
+  x = ((x & 0xC) >> 2) | ((x & 3) << 2);
+  x = ((x & 0xA) >> 1) | ((x & 5) << 2);
+  return x >> (clz - 24);
+}
+
+SHORT bitrev_lut[2 * MAX_SCRAMBLE_SIZE - MIN_SCRAMBLE_SIZE] = {0};
+struct scramble_init {
+  scramble_init() {
+    SHORT *t = bitrev_lut;
+    UINT length = MIN_SCRAMBLE_SIZE;
+    UINT clz = 32 - MIN_SCRAMBLE_SIZE_LOG2;
+    for (; length <= MAX_SCRAMBLE_SIZE; length <<= 1) {
+      if (clz <= 8) {
+        UINT m;
+        for (m = 1; m < length - 1; m++) {
+          UINT j = bitreverse_byte(m, clz);
+          if (j > m) {
+            t[m] = j;
+          }
+        }
+      } else {
+        UINT m, j;
+#ifdef FUNCTION_bitreverse
+        for (m = 1; m < length - 1; m++) {
+          j = bitreverse(m, clz);
+#else
+        for (m = 1, j = 0; m < length - 1; m++) {
+          INT k;
+          for (k = length >> 1; (!((j ^= k) & k)); k >>= 1)
+            ;
+#endif
+          if (j > m) {
+            t[m] = j;
+          }
+        }
+      }
+      t += length;
+      clz--;
+    }
+  }
+};
+
+static const scramble_init s_scramble;
+#endif // FUNCTION_bitreverse
