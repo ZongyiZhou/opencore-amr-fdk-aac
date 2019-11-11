@@ -109,7 +109,10 @@ amm-info@iis.fraunhofer.de
 
 #define SCALE_INLINE
 
-#if defined(__arm__)
+#ifdef __x86__
+#include "x86/scale_x86.h"
+
+#elif defined(__arm__)
 #include "arm/scale_arm.h"
 
 #elif defined(__mips__)
@@ -153,18 +156,21 @@ INT getScalefactor(const FIXP_SGL *vector, INT len);
 inline FIXP_DBL scaleValue(const FIXP_DBL value, /*!< Value */
                            INT scalefactor       /*!< Scalefactor */
 ) {
-  if (scalefactor > 0)
+#ifndef __LP64__
+  if (scalefactor >= 0)
     return (value << scalefactor);
   else
     return (value >> (-scalefactor));
+#else
+  INT64 r = (INT64)value << (64 - DFRACT_BITS);
+  return (FIXP_DBL)(r >> (64 - DFRACT_BITS - scalefactor));
+#endif
 }
 inline FIXP_SGL scaleValue(const FIXP_SGL value, /*!< Value */
                            INT scalefactor       /*!< Scalefactor */
 ) {
-  if (scalefactor > 0)
-    return (value << scalefactor);
-  else
-    return (value >> (-scalefactor));
+  FIXP_DBL r = (FIXP_DBL)value << (DFRACT_BITS - FRACT_BITS);
+  return (FIXP_SGL)(r >> (DFRACT_BITS - FRACT_BITS - scalefactor));
 }
 #endif
 
@@ -199,7 +205,7 @@ inline FIXP_DBL scaleValueSaturate(const FIXP_DBL value,
     if ((DFRACT_BITS - headroom) <= scalefactor) {
       return (FIXP_DBL)0;
     } else {
-      return fMax((value >> scalefactor), (FIXP_DBL)MINVAL_DBL + (FIXP_DBL)1);
+      return value >> scalefactor;
     }
   }
 }
@@ -217,6 +223,7 @@ inline FIXP_DBL scaleValueSaturate(const FIXP_DBL value,
 inline void scaleValueInPlace(FIXP_DBL *value, /*!< Value */
                               INT scalefactor  /*!< Scalefactor */
 ) {
+#ifndef __LP64__
   INT newscale;
   /* Note: The assignment inside the if conditional allows combining a load with
    * the compare to zero (on ARM and maybe others) */
@@ -225,6 +232,10 @@ inline void scaleValueInPlace(FIXP_DBL *value, /*!< Value */
   } else {
     *(value) >>= -newscale;
   }
+#else
+  *value = (INT64)(*value) << (64 - DFRACT_BITS)
+           >> (64 - DFRACT_BITS - scalefactor);
+#endif
 }
 #endif
 
