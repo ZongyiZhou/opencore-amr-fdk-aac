@@ -173,6 +173,25 @@ typedef unsigned long long uint64_t;
  *        Data type representing the width of input and output PCM samples.
  */
 
+/* Define 64 bit base integer type. */
+#ifdef _MSC_VER
+typedef __int64 INT64;
+typedef unsigned __int64 UINT64;
+
+#ifdef __AVX__
+#define __SSE41__ 1
+#else
+#define __SSE41__ 0
+#endif
+
+#ifdef _M_X64
+#define __LP64__
+#endif
+#else
+typedef long long INT64;
+typedef unsigned long long UINT64;
+#endif
+
 typedef signed int INT;
 typedef unsigned int UINT;
 #ifdef __LP64__
@@ -191,15 +210,6 @@ typedef unsigned char UCHAR;
 
 #define SHORT_BITS 16
 #define CHAR_BITS 8
-
-/* Define 64 bit base integer type. */
-#ifdef _MSC_VER
-typedef __int64 INT64;
-typedef unsigned __int64 UINT64;
-#else
-typedef long long INT64;
-typedef unsigned long long UINT64;
-#endif
 
 #ifndef NULL
 #ifdef __cplusplus
