@@ -179,9 +179,11 @@ typedef __int64 INT64;
 typedef unsigned __int64 UINT64;
 
 #ifdef __AVX__
-#define __SSE41__ 1
-#else
-#define __SSE41__ 0
+#define __SSE4_1__ 1
+#define __SSE4_2__ 1
+#ifdef __AVX2__
+#define __FMA__ 1
+#endif
 #endif
 
 #ifdef _M_X64
@@ -190,7 +192,12 @@ typedef unsigned __int64 UINT64;
 #else
 typedef long long INT64;
 typedef unsigned long long UINT64;
+
+#if HAVE_BYTESWAP_H
+#include <byteswap.h>
+#define HAVE_BSWAP
 #endif
+#endif  // toolchain
 
 typedef signed int INT;
 typedef unsigned int UINT;
@@ -199,7 +206,7 @@ typedef unsigned int UINT;
 /* Use defines to avoid type alias problems on 64 bit machines. */
 #define LONG INT
 #define ULONG UINT
-#else  /* __LP64__ */
+#else /* __LP64__ */
 typedef signed long LONG;
 typedef unsigned long ULONG;
 #endif /* __LP64__ */
@@ -267,10 +274,13 @@ it. Hence, a fully platform-independant way to use alignment is not supported.
 /* RAM_ALIGN keyword causes memory alignment of global variables. */
 #if defined(_MSC_VER)
 #define RAM_ALIGN __declspec(align(ALIGNMENT_DEFAULT))
+#define RAM_ALIGN_X(x) __declspec(align(x))
 #elif defined(__GNUC__)
 #define RAM_ALIGN __attribute__((aligned(ALIGNMENT_DEFAULT)))
+#define RAM_ALIGN_X(x) __attribute__((aligned(x)))
 #else
 #define RAM_ALIGN
+#define RAM_ALIGN_X(x)
 #endif
 
 /*!
@@ -415,6 +425,13 @@ it. Hence, a fully platform-independant way to use alignment is not supported.
  * labels" We consider this warning irrelevant and disable it.
  */
 #pragma warning(disable : 4065)
+#endif
+
+// Endian-ness
+#if defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+#define FDK_BIG_ENDIAN
+#else
+#define FDK_LITTLE_ENDIAN
 #endif
 
 #endif /* MACHINE_TYPE_H */

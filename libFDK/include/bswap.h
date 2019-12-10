@@ -1,7 +1,7 @@
 /* -----------------------------------------------------------------------------
 Software License for The Fraunhofer FDK AAC Codec Library for Android
 
-© Copyright  1995 - 2019 Fraunhofer-Gesellschaft zur Förderung der angewandten
+© Copyright  2019 Fraunhofer-Gesellschaft zur Förderung der angewandten
 Forschung e.V. All rights reserved.
 
  1.    INTRODUCTION
@@ -96,99 +96,57 @@ amm-info@iis.fraunhofer.de
 
    Author(s):   Zongyi Zhou
 
-   Description: Scaling operations for x86
+   Description: fixed point intrinsics
 
 *******************************************************************************/
 
-/* prevent multiple inclusion with re-definitions */
-#ifndef __INCLUDE_SCALE_X86__
-#define __INCLUDE_SCALE_X86__
+#if !defined(BSWAP_H)
+#define BSWAP_H
 
-#define FUNCTION_scaleValuesSaturate_DBL
-void scaleValuesSaturate(FIXP_DBL *vector, INT len, INT scalefactor) {
-  /* Return if scalefactor is Zero */
-  if (scalefactor == 0) return;
+#include "FDK_archdef.h"
+#include "machine_type.h"
 
-  if (scalefactor > 0) {
-    __m128i exp = _mm_cvtsi32_si128(scalefactor);
-    __m128d maxint = _mm_set1_pd((double)FDK_INT_MAX);
-    exp = _mm_shuffle_epi32(exp, 0x44);
-    exp = _mm_slli_epi32(exp, 20);
-    __m128d d;
-    __m128i i64;
-    for (int i = len >> 1; i; i--) {
-      d = _mm_cvtepi32_pd(*(__m128i *)vector);
-      d = _mm_castsi128_pd(_mm_add_epi32(_mm_castpd_si128(d), exp));
-      d = _mm_min_pd(d, maxint);
-      i64 = _mm_cvtpd_epi32(d);
-      _mm_storel_pi((__m64 *)vector, _mm_castsi128_ps(i64));
-      vector += 2;
-    }
-    if (len & 1) {
-      INT v = *vector;
-      d = _mm_cvtsi32_sd(d, v);
-      d = _mm_castsi128_pd(_mm_add_epi32(_mm_castpd_si128(d), exp));
-      d = _mm_min_sd(d, maxint);
-      *vector = _mm_cvtsd_si32(_mm_castsi128_pd(i64));
-    }
-  } else {
-    for (INT i = 0; i < len; i++) {
-      vector[i] = vector[i] >> scalefactor;
-    }
-  }
+#if defined(_MSC_VER) && _MSC_VER >= 1200
+#define bswap_16(x) _byteswap_ushort(x)
+#define bswap_32(x) _byteswap_ulong(x)
+#define bswap_64(x) _byteswap_uint64(x)
+#define HAVE_BSWAP
+#endif
+
+#ifndef HAVE_BSWAP
+/*************************************************************************
+ *************************************************************************
+    Software fallbacks for missing functions.
+**************************************************************************
+**************************************************************************/
+inline USHORT bswap_16(USHORT value) {
+    return (value << 8) | (value >> 8);
 }
 
-#define FUNCTION_scaleValuesWithFactor_DBL
-void scaleValuesWithFactor(FIXP_DBL *vector, FIXP_DBL factor, INT len,
-                           INT scalefactor) {
-  /* This code combines the fMult with the scaling             */
-  /* It performs a fMultDiv2 and increments shift by 1         */
-#ifdef __SSE4_1__
-  if (scalefactor >= 0) {
+inline UINT bswap_32(UINT value) {
+  return (value << 24) | (value >> 24) | ((value << 8) & 0xff0000) |
+         ((value >> 8) & 0xff00);
+}
+
+inline UINT64 bswap_64(UINT64 value) {
+  union {
+    UINT64 u64;
+    struct {
+      UINT l32;
+      UINT h32;
+    };
+  } r = {value};
+  UINT t = bswap_32(r.l32);
+  r.l32 = bswap_32(r.h32);
+  r.h32 = t;
+  return r.u64;
+}
 #endif
-    // Use fp for multiply and saturation
-    __m128i sh = _mm_cvtsi32_si128(scalefactor - 31);
-    __m128d fd = _mm_cvtsi32_sd(_mm_setzero_pd(), factor);
-    __m128d maxint = _mm_set1_pd((double)0x7fffffff);
-    sh = _mm_slli_epi64(sh, 52);
-    fd = _mm_castsi128_pd(_mm_add_epi32(_mm_castpd_si128(fd), sh));
-    __m128d d;
-    for (int i = len >> 1; i; i--) {
-      d = _mm_cvtepi32_pd(*(__m128i *)vector);
-      d = _mm_mul_pd(d, fd);
-      d = _mm_min_pd(d, maxint);
-      __m128i v = _mm_cvtpd_epi32(d);
-      _mm_storel_pi((__m64 *)vector, _mm_castsi128_ps(v));
-      vector += 2;
-    }
-    if (len & 1) {
-      d = _mm_cvtsi32_sd(d, *vector);
-      d = _mm_mul_sd(d, fd);
-      d = _mm_min_pd(d, maxint);
-      *vector = _mm_cvtsd_si32(d);
-    }
-#ifdef __SSE4_1__
-  } else {
-    __m128i fi = _mm_set1_epi32(factor);
-    __m128i shift = _mm_cvtsi32_si128(-1 - scalefactor);
-    shift = _mm_unpacklo_epi64(shift, shift);
-    for (int i = len >> 1; i; i--) {
-      __m128i v = _mm_cvtepi32_epi64(*(__m128i *)vector);
-      v = _mm_mul_epi32(v, fi);
-      v = _mm_sra_epi32(v, shift);
-      vector[0] = _mm_extract_epi32(v, 1);
-      vector[1] = _mm_extract_epi32(v, 3);
-      vector += 2;
-    }
-    if (len & 1) {
+
 #ifdef __LP64__
-      *vector = ((INT64)*vector * factor) >> (31 - scalefactor);
+#define bswap(x) bswap_64(x)
 #else
-      vector = fMult(*vector, factor) >> -scalefactor;
+#define bswap(x) bswap_32(x)
 #endif
-    }
-  }
-#endif  // __SSE4_1__
-}
 
-#endif /* #ifndef __INCLUDE_SCALE_X86__ */
+#endif /* BSWAP_H */
