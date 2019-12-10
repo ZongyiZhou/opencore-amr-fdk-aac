@@ -123,9 +123,6 @@ amm-info@iis.fraunhofer.de
 #define SYS_LIB_BUILD_TIME __TIME__
 #endif
 
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
 #include <stdarg.h>
 
 /***************************************************************

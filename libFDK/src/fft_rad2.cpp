@@ -101,6 +101,7 @@ amm-info@iis.fraunhofer.de
 *******************************************************************************/
 
 #include "fft_rad2.h"
+#include "bswap.h"
 
 #define __FFT_RAD2_CPP__
 
@@ -319,16 +320,6 @@ void dit_fft_impl(FIXP_DBL *x, const INT ldn, const FIXP_STP *trigdata,
 
 
 #ifndef FUNCTION_bitreverse
-#if _MSC_VER >= 1200
-#include <intrin.h>
-#define bswap_16(x) _byteswap_ushort(x)
-#define bswap_32(x) _byteswap_ulong(x)
-#define bswap_64(x) _byteswap_uint64(x)
-#define HAVE_BSWAP
-#elif HAVE_BYTESWAP_H
-#include <byteswap.h>
-#define HAVE_BSWAP
-#endif // toolchain
 
 #ifdef HAVE_BSWAP
 #define FUNCTION_bitreverse
