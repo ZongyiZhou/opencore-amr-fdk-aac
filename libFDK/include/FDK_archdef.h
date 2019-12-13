@@ -217,10 +217,10 @@ amm-info@iis.fraunhofer.de
 
 #elif defined(__x86__)
 #define ARCH_PREFER_MULT_32x16
-#define SINETABLE_16BIT
-#define WINDOWTABLE_16BIT
-#define POW2COEFF_16BIT
-#define LDCOEFF_16BIT
+#undef SINETABLE_16BIT
+#undef WINDOWTABLE_16BIT
+#undef POW2COEFF_16BIT
+#undef LDCOEFF_16BIT
 
 #elif defined(__riscv)
 #define ARCH_PREFER_MULT_32x16
