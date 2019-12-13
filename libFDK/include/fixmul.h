@@ -150,14 +150,14 @@ inline LONG fixmul_DD(const LONG a, const LONG b) {
 #if !defined(FUNCTION_fixmulBitExact_DD)
 #define FUNCTION_fixmulBitExact_DD
 inline LONG fixmulBitExact_DD(const LONG a, const LONG b) {
-  return ((LONG)((((INT64)a) * b) >> 32)) << 1;
+  return (LONG)(((INT64)a * b) >> 31);
 }
 #endif
 
 #if !defined(FUNCTION_fixmuldiv2_SS)
 #define FUNCTION_fixmuldiv2_SS
 inline LONG fixmuldiv2_SS(const SHORT a, const SHORT b) {
-  return ((LONG)a * b);
+  return (LONG)a * b;
 }
 #endif
 
@@ -253,7 +253,7 @@ inline LONG fixmulBitExact_SD(const SHORT a, const LONG b)
 }
 #else
 {
-  return (LONG)(((((INT64)a) * b) >> 16) << 1);
+  return (LONG)(((INT64)a * b) >> 15);
 }
 #endif
 #endif
@@ -267,7 +267,7 @@ inline LONG fixmulBitExact_DS(const LONG a, const SHORT b)
 }
 #else
 {
-  return (LONG)(((((INT64)a) * b) >> 16) << 1);
+  return (LONG)(((INT64)a * b) >> 15);
 }
 #endif
 #endif

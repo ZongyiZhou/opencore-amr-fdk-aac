@@ -109,10 +109,22 @@ amm-info@iis.fraunhofer.de
 #define fixmuldiv2_SD(a, b) fixmuldiv2BitExact_SD(a, b)
 #define FUNCTION_fixmuldiv2_DS
 #define fixmuldiv2_DS(a, b) fixmuldiv2BitExact_DS(a, b)
+#define FUNCTION_fixmul_SD
+#define fixmul_SD(a, b) fixmulBitExact_SD(a, b)
+#define FUNCTION_fixmul_DS
+#define fixmul_DS(a, b) fixmulBitExact_DS(a, b)
 
-#if defined(_MSC_VER) && defined(_M_IX86)
+#if defined(__x86_64__) || defined(_M_X64)
+
+#define FUNCTION_fixmul_DD
+#define fixmul_DD(a, b) fixmulBitExact_DD(a, b)
+
+#else // 32-bit
 /* Intel x86 */
+
+#if defined(_MSC_VER) && _MSC_VER >= 1500
 #include <intrin.h>
+#pragma intrinsic(__emul)
 
 #define FUNCTION_fixmul_DD
 #define FUNCTION_fixmuldiv2_DD
@@ -147,34 +159,13 @@ inline INT fixmuldiv2_DD(INT a, const INT b) {
 
 /* #############################################################################
  */
-#elif (defined(__GNUC__) || defined(__gnu_linux__)) && defined(__x86__)
+#elif defined(__GNUC__) || defined(__gnu_linux__)
 
 #define FUNCTION_fixmul_DD
-#define FUNCTION_fixmuldiv2_DD
+#define fixmul_DD(a, b) fixmulBitExact_DD(a, b)
 
-#define FUNCTION_fixmuldiv2BitExact_DD
-#define fixmuldiv2BitExact_DD(a, b) fixmuldiv2_DD(a, b)
-
-#define FUNCTION_fixmulBitExact_DD
-#define fixmulBitExact_DD(a, b) fixmul_DD(a, b)
-
-inline INT fixmul_DD(INT a, const INT b) {
-  INT result;
-
-  asm("imul %2" : "=d"(result), "+a"(a) : "r"(b));
-
-  return result * 2;
-}
-
-inline INT fixmuldiv2_DD(INT a, const INT b) {
-  INT result;
-
-  asm("imul %2" : "=d"(result), "+a"(a) : "r"(b));
-
-  return result;
-}
-
-#endif /* (defined(__GNUC__)||defined(__gnu_linux__)) && defined(__x86__) */
+#endif // defined(__GNUC__)||defined(__gnu_linux__)
+#endif // defined(__x86_64__) || defined(_M_X64)
 
 #endif /* __x86__ */
 

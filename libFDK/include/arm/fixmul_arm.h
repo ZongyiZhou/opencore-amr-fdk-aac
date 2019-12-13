@@ -103,45 +103,24 @@ amm-info@iis.fraunhofer.de
 #if !defined(FIXMUL_ARM_H)
 #define FIXMUL_ARM_H
 
-#if defined(__arm__)
-
 #if defined(__GNUC__) && defined(__arm__)
 /* ARM with GNU compiler */
 
 #define FUNCTION_fixmuldiv2_DD
+#define FUNCTION_fixmul_DD
 
-#define FUNCTION_fixmuldiv2BitExact_DD
-#ifdef FUNCTION_fixmuldiv2BitExact_DD
-#define fixmuldiv2BitExact_DD(a, b) fixmuldiv2_DD(a, b)
-#endif /* #ifdef FUNCTION_fixmuldiv2BitExact_DD */
+#ifdef __ARM_ARCH_8__
+#define fixmuldiv2_DD(a, b) fixmuldiv2BitExact_DD(a, b)
+#define FUNCTION_fixmuldiv2_SD
+#define fixmuldiv2_SD(a, b) fixmuldiv2BitExact_SD(a, b)
+#define FUNCTION_fixmuldiv2_DS
+#define fixmuldiv2_DS(a, b) fixmuldiv2BitExact_DS(a, b)
+#define fixmul_DD(a, b) fixmulBitExact_DD(a, b)
 
-#define FUNCTION_fixmulBitExact_DD
-#ifdef FUNCTION_fixmulBitExact_DD
-#define fixmulBitExact_DD(a, b) (fixmuldiv2BitExact_DD(a, b) << 1)
-#endif /* #ifdef FUNCTION_fixmulBitExact_DD */
-
-#define FUNCTION_fixmuldiv2BitExact_DS
-#ifdef FUNCTION_fixmuldiv2BitExact_DS
-#define fixmuldiv2BitExact_DS(a, b) fixmuldiv2_DS(a, b)
-#endif /* #ifdef FUNCTION_fixmuldiv2BitExact_DS */
-
-#define FUNCTION_fixmulBitExact_DS
-#ifdef FUNCTION_fixmulBitExact_DS
-#define fixmulBitExact_DS(a, b) fixmul_DS(a, b)
-#endif /* #ifdef FUNCTION_fixmulBitExact_DS */
-
-#ifdef FUNCTION_fixmuldiv2_DD
+#else // 32-bit ARM
 inline INT fixmuldiv2_DD(const INT a, const INT b) {
   INT result;
-#if defined(__ARM_ARCH_8__)
-  INT64 result64;
-  __asm__(
-      "smull %x0, %w1, %w2;\n"
-      "asr %x0, %x0, #32;     "
-      : "=r"(result64)
-      : "r"(a), "r"(b));
-  result = (INT)result64;
-#elif defined(__ARM_ARCH_6__) || defined(__TARGET_ARCH_7E_M)
+#if defined(__ARM_ARCH_6__) || defined(__TARGET_ARCH_7E_M)
   __asm__("smmul %0, %1, %2" : "=r"(result) : "r"(a), "r"(b));
 #else
   INT discard;
@@ -151,48 +130,26 @@ inline INT fixmuldiv2_DD(const INT a, const INT b) {
 #endif
   return result;
 }
-#endif /* #ifdef FUNCTION_fixmuldiv2_DD */
 
-#if defined(__ARM_ARCH_8__)
+#if defined(__ARM_ARCH_5TE__) || defined(__ARM_ARCH_6__)
 #define FUNCTION_fixmuldiv2_SD
-#ifdef FUNCTION_fixmuldiv2_SD
-inline INT fixmuldiv2_SD(const SHORT a, const INT b) {
-  return fixmuldiv2_DD((INT)(a << 16), b);
-}
-#endif /* #ifdef FUNCTION_fixmuldiv2_SD */
-#elif defined(__ARM_ARCH_5TE__) || defined(__ARM_ARCH_6__)
-#define FUNCTION_fixmuldiv2_SD
-#ifdef FUNCTION_fixmuldiv2_SD
 inline INT fixmuldiv2_SD(const SHORT a, const INT b) {
   INT result;
   __asm__("smulwb %0, %1, %2" : "=r"(result) : "r"(b), "r"(a));
   return result;
 }
-#endif /* #ifdef FUNCTION_fixmuldiv2_SD */
 #endif
 
-#define FUNCTION_fixmul_DD
-#ifdef FUNCTION_fixmul_DD
-#if defined(__ARM_ARCH_8__)
 inline INT fixmul_DD(const INT a, const INT b) {
-  INT64 result64;
-
-  __asm__(
-      "smull %x0, %w1, %w2;\n"
-      "asr %x0, %x0, #31;     "
-      : "=r"(result64)
-      : "r"(a), "r"(b));
-  return (INT)result64;
-}
-#else
-inline INT fixmul_DD(const INT a, const INT b) {
-  return (fixmuldiv2_DD(a, b) << 1);
+  INT hi;
+  UINT lo;
+  __asm__("smull %0, %1, %2, %3"
+          : "=&r"(lo), "=r"(hi)
+          : "r"(a), "r"(b));
+  return (hi * 2) + (lo >> 31);
 }
 #endif /* __ARM_ARCH_8__ */
-#endif /* #ifdef FUNCTION_fixmul_DD */
 
 #endif /* defined(__GNUC__) && defined(__arm__) */
-
-#endif /* __arm__ */
 
 #endif /* !defined(FIXMUL_ARM_H) */
