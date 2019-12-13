@@ -105,38 +105,45 @@ amm-info@iis.fraunhofer.de
 
 #if defined(__GNUC__) /* GCC Compiler */
 
-#if defined(__ARM_ARCH_6__)
+#ifdef __ARM_ARCH_6__
 
-inline static INT shiftRightSat(INT src, int scale) {
+template<int scale>
+inline INT shiftRightSat(INT src) {
   INT result;
-  asm("ssat %0,%2,%0;\n"
-
+  asm("ssat %0,%2,%1 asr %3"
       : "=&r"(result)
-      : "r"(src >> scale), "M"(SAMPLE_BITS));
-
+      : "r"(src), "M"(SAMPLE_BITS), "M"(scale)
+  );
   return result;
 }
 
-#define SATURATE_INT_PCM_RIGHT_SHIFT(src, scale) shiftRightSat(src, scale)
-
-inline static INT shiftLeftSat(INT src, int scale) {
+template<int scale>
+inline static INT shiftLeftSat(INT src) {
   INT result;
-  asm("ssat %0,%2,%0;\n"
-
+  asm("ssat %0,%2,%1"
       : "=&r"(result)
-      : "r"(src << scale), "M"(SAMPLE_BITS));
-
-  return result;
+      : "r"(src), "M"(SAMPLE_BITS - scale)
+  );
+  return result << scale;
 }
 
-#define SATURATE_INT_PCM_LEFT_SHIFT(src, scale) shiftLeftSat(src, scale)
+template<>
+inline INT shiftRightSat<0>(INT src) {
+  return shiftLeftSat<0>(src);
+}
+
+#if SAMPLE_BITS == 32
+#define SATURATE_INT_PCM_RIGHT_SHIFT(src, scale) ((src) >> (scale))
+#else
+#define SATURATE_INT_PCM_RIGHT_SHIFT(src, scale) shiftRightSat<scale>(src)
+#endif
+#define SATURATE_INT_PCM_LEFT_SHIFT(src, scale) shiftLeftSat<scale>(src)
 
 #endif /* __ARM_ARCH_6__ */
 
 #endif /* compiler selection */
 
 #define FUNCTION_scaleValueInPlace
-#ifdef FUNCTION_scaleValueInPlace
 inline void scaleValueInPlace(FIXP_DBL *value, /*!< Value */
                               INT scalefactor  /*!< Scalefactor */
 ) {
@@ -146,7 +153,6 @@ inline void scaleValueInPlace(FIXP_DBL *value, /*!< Value */
   else
     *value >>= -newscale;
 }
-#endif /* #ifdef FUNCTION_scaleValueInPlace */
 
 #define SATURATE_RIGHT_SHIFT(src, scale, dBits)                                \
   ((((LONG)(src) ^ ((LONG)(src) >> (DFRACT_BITS - 1))) >> (scale)) >           \

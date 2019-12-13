@@ -109,12 +109,27 @@ inline FIXP_DBL scaleValueSaturate(const FIXP_DBL value,
 ) {
   if (scalefactor > 0) {
     __m128d d = _mm_cvtsi32_sd(d, value);
+#ifdef __LP64__
+    __m128i i64 = _mm_cvtsi64_si128(((INT64)scalefactor) << 52);
+#else
     __m128i i64 = _mm_slli_epi64(_mm_cvtsi32_si128(scalefactor), 52);
-    d = _mm_castsi128_pd(_mm_add_epi32(i64, _mm_castpd_si128(d)));
+#endif
+    d = _mm_castsi128_pd(_mm_add_epi16(i64, _mm_castpd_si128(d)));
     d = _mm_min_sd(d, _mm_set_sd((double)FDK_INT_MAX));
     return _mm_cvtsd_si32(d);
   }
   return value >> -scalefactor;
 }
+
+#if SAMPLE_BITS == 16
+inline SHORT sat_int32_int16_sse2(INT value) {
+  __m128i x = _mm_cvtsi32_si128(value);
+  x = _mm_packs_epi32(x, x);
+  return (SHORT)_mm_cvtsi128_si32(x);
+}
+#define SATURATE_INT_PCM_RIGHT_SHIFT(src, scale) sat_int32_int16_sse2((src) >> (scale))
+#else
+#define SATURATE_INT_PCM_LEFT_SHIFT(src, scale) scaleValueSaturate(src, scale)
+#endif
 
 #endif /* !defined(SCALE_X86_H) */
