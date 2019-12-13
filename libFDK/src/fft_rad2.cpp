@@ -128,8 +128,9 @@ amm-info@iis.fraunhofer.de
 
 void dit_fft_impl(FIXP_DBL *x, const INT ldn, const FIXP_STP *trigdata,
                   const INT trigDataSize) {
-  const INT n = 1 << ldn;
-  INT trigstep, i, ldm;
+  const UINT n = 1 << ldn;
+  INT trigstep, ldm;
+  UINT i, mh;
 
   /*
    * 1+2 stage radix 4
@@ -158,10 +159,10 @@ void dit_fft_impl(FIXP_DBL *x, const INT ldn, const FIXP_STP *trigdata,
     x[i + 7] = a20 + a10; /* Im D' = Im A - Im B + Re C - Re D */
   }
 
+  mh = (1 << 2);
   for (ldm = 3; ldm <= ldn; ++ldm) {
-    INT m = (1 << ldm);
-    INT mh = (m >> 1);
-    INT j, r;
+    const UINT m = mh * 2;
+    UINT j, r;
 
     trigstep = ((trigDataSize << 2) >> ldm);
 
@@ -176,15 +177,15 @@ void dit_fft_impl(FIXP_DBL *x, const INT ldn, const FIXP_STP *trigdata,
 
       for (r = 0; r < n; r += m) {
         INT t1 = (r + j) << 1;
-        INT t2 = t1 + (mh << 1);
+        INT t2 = t1 + m;
         FIXP_DBL vr, vi, ur, ui;
 
         // cplxMultDiv2(&vi, &vr, x[t2+1], x[t2], (FIXP_SGL)1.0, (FIXP_SGL)0.0);
-        vi = x[t2 + 1] >> 1;
-        vr = x[t2] >> 1;
-
         ur = x[t1] >> 1;
         ui = x[t1 + 1] >> 1;
+
+        vr = x[t2] >> 1;
+        vi = x[t2 + 1] >> 1;
 
         x[t1] = ur + vr;
         x[t1 + 1] = ui + vi;
@@ -193,14 +194,14 @@ void dit_fft_impl(FIXP_DBL *x, const INT ldn, const FIXP_STP *trigdata,
         x[t2 + 1] = ui - vi;
 
         t1 += mh;
-        t2 = t1 + (mh << 1);
+        t2 += mh;
 
         // cplxMultDiv2(&vr, &vi, x[t2+1], x[t2], (FIXP_SGL)1.0, (FIXP_SGL)0.0);
-        vr = x[t2 + 1] >> 1;
-        vi = x[t2] >> 1;
-
         ur = x[t1] >> 1;
         ui = x[t1 + 1] >> 1;
+
+        vr = x[t2 + 1] >> 1;
+        vi = x[t2] >> 1;
 
         x[t1] = ur + vr;
         x[t1 + 1] = ui - vi;
@@ -218,7 +219,7 @@ void dit_fft_impl(FIXP_DBL *x, const INT ldn, const FIXP_STP *trigdata,
 
       for (r = 0; r < n; r += m) {
         INT t1 = (r + j) << 1;
-        INT t2 = t1 + (mh << 1);
+        INT t2 = t1 + m;
         FIXP_DBL vr, vi, ur, ui;
 
         cplxMultDiv2(&vi, &vr, x[t2 + 1], x[t2], cs);
@@ -233,7 +234,7 @@ void dit_fft_impl(FIXP_DBL *x, const INT ldn, const FIXP_STP *trigdata,
         x[t2 + 1] = ui - vi;
 
         t1 += mh;
-        t2 = t1 + (mh << 1);
+        t2 += mh;
 
         cplxMultDiv2(&vr, &vi, x[t2 + 1], x[t2], cs);
 
@@ -247,8 +248,8 @@ void dit_fft_impl(FIXP_DBL *x, const INT ldn, const FIXP_STP *trigdata,
         x[t2 + 1] = ui + vi;
 
         /* Same as above but for t1,t2 with j>mh/4 and thus cs swapped */
-        t1 = (r + mh / 2 - j) << 1;
-        t2 = t1 + (mh << 1);
+        t1 -= j * 4;
+        t2 -= j * 4;
 
         cplxMultDiv2(&vi, &vr, x[t2], x[t2 + 1], cs);
 
@@ -262,7 +263,7 @@ void dit_fft_impl(FIXP_DBL *x, const INT ldn, const FIXP_STP *trigdata,
         x[t2 + 1] = ui + vi;
 
         t1 += mh;
-        t2 = t1 + (mh << 1);
+        t2 += mh;
 
         cplxMultDiv2(&vr, &vi, x[t2], x[t2 + 1], cs);
 
@@ -282,11 +283,11 @@ void dit_fft_impl(FIXP_DBL *x, const INT ldn, const FIXP_STP *trigdata,
 
       for (r = 0; r < n; r += m) {
         INT t1 = (r + j) << 1;
-        INT t2 = t1 + (mh << 1);
+        INT t2 = t1 + m;
         FIXP_DBL vr, vi, ur, ui;
 
-        cplxMultDiv2(&vi, &vr, x[t2 + 1], x[t2], STC(0x5a82799a),
-                     STC(0x5a82799a));
+        cplxMultDiv2(&vi, &vr, x[t2 + 1], x[t2], (FIXP_DBL)0x5a82799a,
+                     (FIXP_DBL)0x5a82799a);
 
         ur = x[t1] >> 1;
         ui = x[t1 + 1] >> 1;
@@ -298,10 +299,10 @@ void dit_fft_impl(FIXP_DBL *x, const INT ldn, const FIXP_STP *trigdata,
         x[t2 + 1] = ui - vi;
 
         t1 += mh;
-        t2 = t1 + (mh << 1);
+        t2 += mh;
 
-        cplxMultDiv2(&vr, &vi, x[t2 + 1], x[t2], STC(0x5a82799a),
-                     STC(0x5a82799a));
+        cplxMultDiv2(&vr, &vi, x[t2 + 1], x[t2], (FIXP_DBL)0x5a82799a,
+                     (FIXP_DBL)0x5a82799a);
 
         ur = x[t1] >> 1;
         ui = x[t1 + 1] >> 1;
@@ -313,6 +314,7 @@ void dit_fft_impl(FIXP_DBL *x, const INT ldn, const FIXP_STP *trigdata,
         x[t2 + 1] = ui + vi;
       }
     } /* end of block 2 */
+    mh = m;
   }
 }
 
