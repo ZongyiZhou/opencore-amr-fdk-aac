@@ -759,12 +759,6 @@ FIXP_DBL fPowInt(FIXP_DBL base_m, INT base_e, INT exp, INT *pResult_e) {
 }
 #endif /* FUNCTION_fPow */
 
-#ifndef FUNCTION_fLog2
-FIXP_DBL CalcLog2(FIXP_DBL base_m, INT base_e, INT *result_e) {
-  return fLog2(base_m, base_e, result_e);
-}
-#endif /* FUNCTION_fLog2 */
-
 INT fixp_floorToInt(FIXP_DBL f_inp, INT sf) {
   FDK_ASSERT(sf >= 0);
   INT floorInt = (INT)(f_inp >> ((DFRACT_BITS - 1) - sf));
@@ -904,3 +898,51 @@ FIXP_DBL fixp_round(FIXP_DBL f_inp, INT sf) {
   FIXP_DBL f_round = (FIXP_DBL)r;
   return f_round;
 }
+
+// Initilizer for fLog2 LUTs
+#if defined(__cpp_constexpr) && !defined(_MSC_VER)
+constexpr
+#endif
+UINT calLut(const UINT i) {
+  return lround(log2((double)(LOG2_LUT_SIZE + i) / LOG2_LUT_SIZE) *
+                (1UL << 31)) + LOG2_ROUNDING_OFFSET;
+}
+
+#if defined(__cpp_constexpr) && !defined(_MSC_VER)
+#define LUT2(x) calLut(x),calLut(x+1),calLut(x+2),calLut(x+3)
+#define LUT4(x) LUT2(x),LUT2(x+4),LUT2(x+8),LUT2(x+12)
+#define LUT6(x) LUT4(x),LUT4(x+16),LUT4(x+32),LUT4(x+48)
+#define LUT7(x) LUT6(x),LUT6(x+64)
+
+static_assert(LOG2_LUT_SIZE_LOG2 > 6 && LOG2_LUT_SIZE_LOG2 < 10,
+             "LOG2_LUT_SIZE_LOG2 must be in range [6,9]");
+
+const UINT log2_lut[LOG2_LUT_SIZE + 1] = {
+  LUT7(0),
+#if LOG2_LUT_SIZE_LOG2 > 7
+  LUT7(128),
+#if LOG2_LUT_SIZE_LOG2 > 8
+  LUT7(256), LUT7(384),
+#endif
+#endif
+  0x80000000 + LOG2_ROUNDING_OFFSET
+};
+#else
+UINT log2_lut[LOG2_LUT_SIZE + 1];
+struct lutInitializer {
+  lutInitializer() {
+    for (UINT i = 0; i < LOG2_LUT_SIZE; i++) {
+      log2_lut[i] = calLut(i);
+    }
+    log2_lut[LOG2_LUT_SIZE] = 0x80000000 + LOG2_ROUNDING_OFFSET;
+  }
+};
+static const lutInitializer initializer;
+#endif
+
+const UCHAR fnorm_lut[32] = {
+  30, 29, 28, 28, 27, 27, 27, 27,
+  26, 26, 26, 26, 26, 26, 26, 26,
+  25, 25, 25, 25, 25, 25, 25, 25,
+  25, 25, 25, 25, 25, 25, 25, 25
+};
