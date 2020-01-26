@@ -103,7 +103,7 @@ amm-info@iis.fraunhofer.de
 #ifndef FIXPOINT_MATH_H
 #define FIXPOINT_MATH_H
 
-#include "common_fix.h"
+#include <math.h>
 #include "scale.h"
 
 /*
@@ -207,17 +207,15 @@ FDK_INLINE FIXP_DBL CalcInvLdData(const FIXP_DBL x) {
   UINT index3 = (UINT)(LONG)(x >> 10) & 0x1F;
   UINT index2 = (UINT)(LONG)(x >> 15) & 0x1F;
   UINT index1 = (UINT)(LONG)(x >> 20) & 0x1F;
-  int exp = fMin(31, ((x > FL2FXCONST_DBL(0.0f)) ? (31 - (int)(x >> 25))
-                                                 : (int)(-(x >> 25))));
+  int exp = fMin(31, (x > FL2FXCONST_DBL(0.0f) ? (31 - (int)(x >> 25))
+                                               : (int)-(x >> 25)));
 
   UINT lookup1 = exp2_tab_long[index1] * set_zero;
   UINT lookup2 = exp2w_tab_long[index2];
-  UINT lookup3 = exp2x_tab_long[index3];
-  UINT lookup3f =
-      lookup3 + (UINT)(LONG)fMultDiv2((FIXP_DBL)(0x0016302F), (FIXP_SGL)frac);
+  UINT lookup3 = exp2x_tab_long[index3] + fMultDiv2((FIXP_DBL)(0x0016302F), frac);
 
   UINT lookup12 = (UINT)(LONG)fMult((FIXP_DBL)lookup1, (FIXP_DBL)lookup2);
-  UINT lookup = (UINT)(LONG)fMult((FIXP_DBL)lookup12, (FIXP_DBL)lookup3f);
+  UINT lookup = (UINT)(LONG)fMult((FIXP_DBL)lookup12, (FIXP_DBL)lookup3);
 
   FIXP_DBL retVal = (lookup << 3) >> exp;
 
@@ -235,7 +233,7 @@ extern const USHORT sqrt_tab[49];
 
 inline FIXP_DBL sqrtFixp_lookup(FIXP_DBL x) {
   UINT y = (INT)x;
-  UCHAR is_zero = (y == 0);
+  if (y == 0) return 0;
   INT zeros = fixnormz_D(y) & 0x1e;
   y <<= zeros;
   UINT idx = (y >> 26) - 16;
@@ -243,7 +241,7 @@ inline FIXP_DBL sqrtFixp_lookup(FIXP_DBL x) {
   USHORT nfrac = 0xffff ^ frac;
   UINT t = (UINT)nfrac * sqrt_tab[idx] + (UINT)frac * sqrt_tab[idx + 1];
   t = t >> (zeros >> 1);
-  return (is_zero ? 0 : t);
+  return t;
 }
 
 inline FIXP_DBL sqrtFixp_lookup(FIXP_DBL x, INT *x_e) {
@@ -564,6 +562,18 @@ inline INT fMultIceil(FIXP_DBL a, INT b) {
 }
 #endif /* FUNCTION_fMultIceil */
 
+#ifndef FUNCTION_llRightShift32
+/**
+ * \brief Shift UINT64 value with bits less than 32.
+ * \param value input value
+ * \param shift bits to shift
+ * \return value >> shift, narrowing to UINT
+ */
+inline UINT llRightShift32(UINT64 value, INT shift) {
+  return (INT)(value >> shift);
+}
+#endif
+
 #ifndef FUNCTION_fDivNorm
 /**
  * \brief Divide 2 FIXP_DBL values with normalization of input values.
@@ -754,7 +764,62 @@ FIXP_DBL fPow(FIXP_DBL base_m, INT base_e, FIXP_DBL exp_m, INT exp_e,
 FIXP_DBL fPowInt(FIXP_DBL base_m, INT base_e, INT N, INT *result_e);
 #endif /* #ifndef FUNCTION_fPow */
 
-#ifndef FUNCTION_fLog2
+
+// Calculate log(argument)/log(2) using lookup table and linear interpolation
+#define LOG2_LUT_SIZE_LOG2 8
+const UINT LOG2_LUT_SIZE = (1 << LOG2_LUT_SIZE_LOG2);
+const UINT LOG2_LUT_MASK = (1 << (32 - LOG2_LUT_SIZE_LOG2)) - 1;
+const UINT LOG2_RESULT_SCALE_BITS =
+    31 - (DFRACT_BITS - LD_DATA_SHIFT - 1) + 32 - LOG2_LUT_SIZE_LOG2;
+const UINT LOG2_ROUNDING_OFFSET =
+    1 << (LOG2_LUT_SIZE_LOG2 + LOG2_RESULT_SCALE_BITS - 33);
+
+#if defined(__cpp_constexpr) && !defined(_MSC_VER)
+const
+#endif
+extern UINT log2_lut[LOG2_LUT_SIZE + 1];
+extern const UCHAR fnorm_lut[32];
+
+FDK_INLINE FIXP_DBL fLog2_lookup(FIXP_DBL x_m, INT x_e, INT *result_e) {
+  if (x_m <= FL2FXCONST_DBL(0.0f)) {
+    *result_e = DFRACT_BITS - 1;
+    x_m = FL2FXCONST_DBL(-1.0f);
+  } else {
+    UINT clz = CntLeadingZeros(x_m);
+    int offset = x_e - clz;
+    UINT mant = x_m << clz << 1;
+    UINT index = mant >> (DFRACT_BITS - LOG2_LUT_SIZE_LOG2);
+    UINT frac = mant & LOG2_LUT_MASK;
+    UINT64 r = log2_lut[index] * (UINT64)(LOG2_LUT_MASK + 1 - frac) +
+               log2_lut[index + 1] * (UINT64)frac;
+    int offset_1 = offset + 1;
+    int norm = fnorm_lut[offset_1 ^ (offset_1 >> 31)];
+    x_m = offset << norm;
+    *result_e = DFRACT_BITS - 1 - norm;
+    const UINT round_diff = (1 << (LOG2_RESULT_SCALE_BITS - 1)) -
+                            (1 << (62 - LOG2_LUT_SIZE_LOG2 - norm));
+    x_m += llRightShift32(r - round_diff, 63 - LOG2_LUT_SIZE_LOG2 - norm);
+  }
+  return x_m;
+}
+
+FDK_INLINE FIXP_DBL fLog2_lookup(FIXP_DBL x_m, INT x_e) {
+  if (x_m <= FL2FXCONST_DBL(0.0f)) {
+    x_m = FL2FXCONST_DBL(-1.0f);
+  } else {
+    UINT clz = CntLeadingZeros(x_m);
+    INT offset = (x_e - clz) << (DFRACT_BITS - LD_DATA_SHIFT - 1);
+    UINT mant = x_m << clz << 1;
+    UINT index = mant >> (DFRACT_BITS - LOG2_LUT_SIZE_LOG2);
+    UINT frac = mant & LOG2_LUT_MASK;
+    UINT64 r = log2_lut[index] * (UINT64)(LOG2_LUT_MASK + 1 - frac) +
+               log2_lut[index + 1] * (UINT64)frac;
+    x_m = (UINT)(r >> LOG2_RESULT_SCALE_BITS) + offset;
+  }
+  return x_m;
+}
+
+#ifndef FUNCTION_fLog2E
 /**
  * \brief Calculate log(argument)/log(2) (logarithm with base 2). deprecated.
  * Use fLog2() instead.
@@ -764,78 +829,12 @@ FIXP_DBL fPowInt(FIXP_DBL base_m, INT base_e, INT N, INT *result_e);
  * \return the mantissa of the result.
  * \param
  */
-FIXP_DBL CalcLog2(FIXP_DBL arg, INT arg_e, INT *result_e);
-
-/**
- * \brief calculate logarithm of base 2 of x_m * 2^(x_e)
- * \param x_m mantissa of the input value.
- * \param x_e exponent of the input value.
- * \param pointer to an INT where the exponent of the result is returned into.
- * \return mantissa of the result.
- */
 FDK_INLINE FIXP_DBL fLog2(FIXP_DBL x_m, INT x_e, INT *result_e) {
-  FIXP_DBL result_m;
-
-  /* Short cut for zero and negative numbers. */
-  if (x_m <= FL2FXCONST_DBL(0.0f)) {
-    *result_e = DFRACT_BITS - 1;
-    return FL2FXCONST_DBL(-1.0f);
-  }
-
-  /* Calculate log2() */
-  {
-    FIXP_DBL x2_m;
-
-    /* Move input value x_m * 2^x_e toward 1.0, where the taylor approximation
-       of the function log(1-x) centered at 0 is most accurate. */
-    {
-      INT b_norm;
-
-      b_norm = fNormz(x_m) - 1;
-      x2_m = x_m << b_norm;
-      x_e = x_e - b_norm;
-    }
-
-    /* map x from log(x) domain to log(1-x) domain. */
-    x2_m = -(x2_m + FL2FXCONST_DBL(-1.0));
-
-    /* Taylor polynomial approximation of ln(1-x) */
-    {
-      FIXP_DBL px2_m;
-      result_m = FL2FXCONST_DBL(0.0);
-      px2_m = x2_m;
-      for (int i = 0; i < LD_PRECISION; i++) {
-        result_m = fMultAddDiv2(result_m, ldCoeff[i], px2_m);
-        px2_m = fMult(px2_m, x2_m);
-      }
-    }
-    /* Multiply result with 1/ln(2) = 1.0 + 0.442695040888 (get log2(x) from
-     * ln(x) result). */
-    result_m =
-        fMultAddDiv2(result_m, result_m,
-                     FL2FXCONST_DBL(2.0 * 0.4426950408889634073599246810019));
-
-    /* Add exponent part. log2(x_m * 2^x_e) = log2(x_m) + x_e */
-    if (x_e != 0) {
-      int enorm;
-
-      enorm = DFRACT_BITS - fNorm((FIXP_DBL)x_e);
-      /* The -1 in the right shift of result_m compensates the fMultDiv2() above
-       * in the taylor polynomial evaluation loop.*/
-      result_m = (result_m >> (enorm - 1)) +
-                 ((FIXP_DBL)x_e << (DFRACT_BITS - 1 - enorm));
-
-      *result_e = enorm;
-    } else {
-      /* 1 compensates the fMultDiv2() above in the taylor polynomial evaluation
-       * loop.*/
-      *result_e = 1;
-    }
-  }
-
-  return result_m;
+  return fLog2_lookup(x_m, x_e, result_e);
 }
+#endif /* FUNCTION_fLog2E */
 
+#ifndef FUNCTION_fLog2
 /**
  * \brief calculate logarithm of base 2 of x_m * 2^(x_e)
  * \param x_m mantissa of the input value.
@@ -843,17 +842,13 @@ FDK_INLINE FIXP_DBL fLog2(FIXP_DBL x_m, INT x_e, INT *result_e) {
  * \return mantissa of the result with implicit exponent of LD_DATA_SHIFT.
  */
 FDK_INLINE FIXP_DBL fLog2(FIXP_DBL x_m, INT x_e) {
-  if (x_m <= FL2FXCONST_DBL(0.0f)) {
-    x_m = FL2FXCONST_DBL(-1.0f);
-  } else {
-    INT result_e;
-    x_m = fLog2(x_m, x_e, &result_e);
-    x_m = scaleValue(x_m, result_e - LD_DATA_SHIFT);
-  }
-  return x_m;
+  return fLog2_lookup(x_m, x_e);
 }
-
 #endif /* FUNCTION_fLog2 */
+
+FDK_INLINE FIXP_DBL CalcLog2(FIXP_DBL base_m, INT base_e, INT *result_e) {
+  return fLog2(base_m, base_e, result_e);
+}
 
 #ifndef FUNCTION_fAddSaturate
 /**

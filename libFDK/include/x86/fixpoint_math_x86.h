@@ -103,21 +103,22 @@ amm-info@iis.fraunhofer.de
 #if !defined(FIXPOINT_MATH_X86_H)
 #define FIXPOINT_MATH_X86_H
 
-#define FUNCTION_sqrtFixp
+#if defined(_MSC_VER) && (_MSC_VER > 1200)
+#include <intrin.h>
+#include <immintrin.h>
 
-#include <math.h>
-
-#ifdef FUNCTION_sqrtFixp
-static inline FIXP_DBL sqrtFixp(const FIXP_DBL op) {
-  FIXP_DBL result;
-  /* result =
-   * (FIXP_DBL)(INT)(sqrt((double)(INT)op)*46340.950011841578559133736114903);
-   */
-  result = (FIXP_DBL)(INT)(sqrt((float)(INT)op) * 46340.9492f);
-  FDK_ASSERT(result >= (FIXP_DBL)0);
-  return result;
+inline int lrintf_fast(const float value) {
+  return _mm_cvt_ss2si(_mm_set_ss(value));
 }
-#endif /* FUNCTION_sqrtFixp */
+#define lrintf(v) lrintf_fast(v)
+#define lroundf(v) lrintf_fast(v)
+
+inline int lrint_fast(const double value) {
+  return _mm_cvtsd_si32(_mm_set_sd(value));
+}
+#define lrint(v) lrint_fast(v)
+#define lround(v) lrint_fast(v)
+#endif  // _MSC_VER
 
 #include <math.h>
 
