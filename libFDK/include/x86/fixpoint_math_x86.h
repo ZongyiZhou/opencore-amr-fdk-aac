@@ -157,18 +157,17 @@ inline FIXP_DBL invSqrtNorm2(FIXP_DBL op_m, INT *result_e) {
  * \param op mantissa of the input value.
  * \return mantissa of the result with implizit exponent of 31
  */
-#ifdef FUNCTION_invFixp
 inline FIXP_DBL invFixp(FIXP_DBL op) {
-  float result;
-  INT result_e;
   if ((op == (FIXP_DBL)0) || (op == (FIXP_DBL)1)) {
     return ((LONG)0x7fffffff);
   }
-  result = (float)(1.0 / (float)(INT)op);
-  result = frexpf(result, &result_e);
-  result = ldexpf(result, 31 + result_e);
-
-  return (FIXP_DBL)(INT)result;
+#ifdef __GNUC__
+  int q, r;
+  __asm__("idiv %2" : "=a"(q), "=d"(r) : "r"(op), "a"(1 << 31), "d"(0));
+  return q;
+#else
+  return (1 << 31) / -op;
+#endif
 }
 
 /**
@@ -179,18 +178,26 @@ inline FIXP_DBL invFixp(FIXP_DBL op) {
  * \return mantissa of the result
  */
 inline FIXP_DBL invFixp(FIXP_DBL op_m, int *op_e) {
-  float result;
-  INT result_e;
-  if ((op_m == (FIXP_DBL)0x00000000) || (op_m == (FIXP_DBL)0x00000001)) {
+  union {
+    double d;
+    UINT64 i;
+    INT i32[2];
+  } result;
+  if ((op_m == (FIXP_DBL)0) || (op_m == (FIXP_DBL)1)) {
     *op_e = 31 - *op_e;
     return ((LONG)0x7fffffff);
   }
-  result = (float)(1.0 / (float)(INT)op_m);
-  result = ldexpf(frexpf(result, &result_e), DFRACT_BITS - 1);
-  *op_e = result_e - *op_e + 31;
-  return (FIXP_DBL)(INT)result;
+  result.d = 1.0 / op_m;
+  INT mant = (INT)(result.i >> 22) & 0x3FFFFFFF | 0x40000000;
+#ifdef __LP64__
+  INT sign = (INT64)result.i >> 63;
+  *op_e = ((INT)(result.i >> 52) & 0x7FF) - 1023 + 32 - *op_e;
+#else
+  INT sign = result.i32[1] >> 31;
+  *op_e = ((result.i32[1] >> 20) & 0x7FF) - 1023 + 32 - *op_e;
+#endif
+  return (FIXP_DBL)((mant ^ sign) - sign);
 }
-#endif /* FUNCTION_invFixp */
 
 #define FUNCTION_schur_div
 /**
@@ -200,7 +207,6 @@ inline FIXP_DBL invFixp(FIXP_DBL op_m, int *op_e) {
  * \param count amount of significant bits of the result (starting to the MSB)
  * \return num/divisor
  */
-#ifdef FUNCTION_schur_div
 inline FIXP_DBL schur_div(FIXP_DBL num, FIXP_DBL denum, INT count) {
   (void)count;
   /* same asserts than for fallback implementation */
@@ -209,9 +215,8 @@ inline FIXP_DBL schur_div(FIXP_DBL num, FIXP_DBL denum, INT count) {
   FDK_ASSERT(num <= denum);
 
   return (num == denum) ? (FIXP_DBL)MAXVAL_DBL
-                        : (FIXP_DBL)(INT)(((INT64)(INT)num << 31) / (INT)denum);
+                        : (FIXP_DBL)(((INT64)num << 31) / denum);
 }
-#endif /* FUNCTION_schur_div */
 
 #ifndef __LP64__
 #define FUNCTION_llRightShift32
