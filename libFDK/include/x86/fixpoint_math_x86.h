@@ -206,4 +206,54 @@ inline FIXP_DBL schur_div(FIXP_DBL num, FIXP_DBL denum, INT count) {
                         : (FIXP_DBL)(INT)(((INT64)(INT)num << 31) / (INT)denum);
 }
 #endif /* FUNCTION_schur_div */
+
+#ifndef __LP64__
+#define FUNCTION_llRightShift32
+inline UINT llRightShift32(UINT64 value, INT shift) {
+#ifdef _MSC_VER
+  return (UINT)__ull_rshift(value, shift);
+#else
+  __asm__("shrd %%cl, %%edx, %%eax" : "+A"(value) : "c"(shift));
+  return (UINT)value;
+#endif
+}
+#endif // __LP64__
+
+FDK_INLINE FIXP_DBL fLog2FP(FIXP_DBL x_m, INT x_e, INT *result_e) {
+  if (x_m <= FL2FXCONST_DBL(0.0f)) {
+    *result_e = DFRACT_BITS - 1;
+    x_m = FL2FXCONST_DBL(-1.0f);
+  } else {
+    UINT clz = CntLeadingZeros(x_m);
+    double r = log(x_m) / log(2.0) + (x_e - DFRACT_BITS + 1);
+    int offset = x_e - clz + 1;
+    if (offset) {
+      UINT norm = fNorm(offset);
+      r *= 1 << (norm - 1);
+      *result_e = DFRACT_BITS - norm;
+    } else {
+      r *= 1 << 30;
+      *result_e = 1;
+    }
+    x_m = lrint(r);
+  }
+  return x_m;
+}
+
+FDK_INLINE FIXP_DBL fLog2FP(FIXP_DBL x_m, INT x_e) {
+  if (x_m <= FL2FXCONST_DBL(0.0f)) {
+    x_m = FL2FXCONST_DBL(-1.0f);
+  } else {
+    const double coef = (double)(DFRACT_FIX_SCALE >> LD_DATA_SHIFT) / log(2.0);
+    INT offset = (x_e - DFRACT_BITS + 1) << (DFRACT_BITS - LD_DATA_SHIFT - 1);
+    x_m = lrint(log(x_m) * coef) + offset;
+  }
+  return x_m;
+}
+
+#define FUNCTION_fLog2E
+FDK_INLINE FIXP_DBL fLog2(FIXP_DBL x_m, INT x_e, INT *result_e) {
+  return fLog2FP(x_m, x_e, result_e);
+}
+
 #endif /* !defined(FIXPOINT_MATH_X86_H) */
