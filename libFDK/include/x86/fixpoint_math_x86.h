@@ -120,7 +120,14 @@ inline int lrint_fast(const double value) {
 #define lround(v) lrint_fast(v)
 #endif  // _MSC_VER
 
-#include <math.h>
+#define FUNCTION_sqrtFixp
+inline FIXP_DBL sqrtFixp(const FIXP_DBL op) {
+#ifdef __LP64__
+  return lrint(sqrt((INT64)op << 31));
+#else
+  return lrint(sqrt(op * (double)(1UL << 31)));
+#endif
+}
 
 #define FUNCTION_invSqrtNorm2
 /**
@@ -129,21 +136,20 @@ inline int lrint_fast(const double value) {
  * \param result_e pointer to return the exponent of the result
  * \return mantissa of the result
  */
-#ifdef FUNCTION_invSqrtNorm2
 inline FIXP_DBL invSqrtNorm2(FIXP_DBL op_m, INT *result_e) {
-  float result;
+  union {
+    double d;
+    UINT64 i;
+  } result;
   if (op_m == (FIXP_DBL)0) {
     *result_e = 16;
     return ((LONG)0x7fffffff);
   }
-  result = (float)(1.0 / sqrt(0.5f * (float)(INT)op_m));
-  result = (float)ldexp(frexpf(result, result_e), DFRACT_BITS - 1);
-  *result_e += 15;
-
-  FDK_ASSERT(result >= 0);
-  return (FIXP_DBL)(INT)result;
+  result.d = sqrt(2) / sqrt(op_m);
+  UINT mant = (UINT)(result.i >> 22) & 0x3FFFFFFF | 0x40000000;
+  *result_e = (INT)(result.i >> 52) - 1023 + 16;
+  return (FIXP_DBL)mant;
 }
-#endif /* FUNCTION_invSqrtNorm2 */
 
 #define FUNCTION_invFixp
 /**
