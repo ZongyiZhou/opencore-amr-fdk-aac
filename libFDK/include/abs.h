@@ -133,4 +133,6 @@ inline FIXP_SGL fixabs_S(FIXP_SGL x) {
 }
 #endif
 
+inline INT64 fixabs_64(INT64 x) { return x < 0 ? -x : x; }
+
 #endif /* ABS_H */
