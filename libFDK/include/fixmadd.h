@@ -107,9 +107,10 @@ amm-info@iis.fraunhofer.de
 #include "machine_type.h"
 #include "fixmul.h"
 
-#if defined(__arm__)
+#ifdef __x86__
+#include "x86/fixmadd_x86.h"
+#elif defined(__arm__)
 #include "arm/fixmadd_arm.h"
-
 #endif /* all cores */
 
 /*************************************************************************
@@ -328,6 +329,13 @@ inline INT fixpadddiv2_S(FIXP_DBL x, const FIXP_SGL a) {
 #endif
 #if !defined(FUNCTION_fixpow2add_S)
 inline INT fixpadd_S(FIXP_DBL x, const FIXP_SGL a) { return (x + fPow2(a)); }
+#endif
+
+#if !defined(FUNCTION_fixsumpow2div2_D)
+#define FUNCTION_fixsumpow2div2_D
+inline FIXP_DBL fixsumpow2div2_D(const FIXP_DBL a, const FIXP_DBL b) {
+  return fixpow2div2_D(a) + fixpow2div2_D(b);
+}
 #endif
 
 #endif /* FIXMADD_H */

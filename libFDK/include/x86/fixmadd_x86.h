@@ -1,7 +1,7 @@
 /* -----------------------------------------------------------------------------
 Software License for The Fraunhofer FDK AAC Codec Library for Android
 
-© Copyright  1995 - 2018 Fraunhofer-Gesellschaft zur Förderung der angewandten
+© Copyright  2019 Fraunhofer-Gesellschaft zur Förderung der angewandten
 Forschung e.V. All rights reserved.
 
  1.    INTRODUCTION
@@ -100,123 +100,14 @@ amm-info@iis.fraunhofer.de
 
 *******************************************************************************/
 
-#if !defined(FIXMADD_ARM_H)
-#define FIXMADD_ARM_H
+#if !defined(FIXMADD_X86_H)
+#define FIXMADD_X86_H
 
-/* #############################################################################
- */
-/* ARM GNU GCC */
-
-#ifdef __ARM_ARCH_8__
-#if defined(__GNUC__)
-#define FUNCTION_fixmadddiv2_DD
-#ifdef FUNCTION_fixmadddiv2_DD
-inline FIXP_DBL fixmadddiv2_DD(FIXP_DBL x, const FIXP_DBL a, const FIXP_DBL b) {
-  INT64 result;
-  asm("smull  %x0,  %w1,  %w2;    \n"
-      "asr    %x0,  %x0,  #32;    \n"
-      "add    %w0, %w3,  %w0;    \n"
-      : "=&r"(result)
-      : "r"(a), "r"(b), "r"(x));
-  return (INT)result;
-}
-#endif /* #ifdef FUNCTION_fixmadddiv2_DD */
-
-#define FUNCTION_fixmsubdiv2_DD
-#ifdef FUNCTION_fixmsubdiv2_DD
-inline FIXP_DBL fixmsubdiv2_DD(FIXP_DBL x, const FIXP_DBL a, const FIXP_DBL b) {
-  INT64 result;
-  asm("smull  %x0,  %w1, %w2;     \n"
-      "asr    %x0,  %x0,  #32;     \n"
-      "sub    %w0, %w3, %w0;     \n"
-      : "=&r"(result)
-      : "r"(a), "r"(b), "r"(x));
-  return (INT)result;
-}
-#endif /* #ifdef FUNCTION_fixmsubdiv2_DD */
-#endif /* toolchain */
-
+#if defined(__x86_64__) || defined(_M_X64)
 #define FUNCTION_fixsumpow2div2_D
 inline FIXP_DBL fixsumpow2div2_D(const FIXP_DBL a, const FIXP_DBL b) {
   return ((INT64)a * a + (INT64)b * b) >> 32;
 }
+#endif
 
-#elif defined(__GNUC__)
-#if defined(__ARM_ARCH_6__)
-
-#define FUNCTION_fixmadddiv2_DD
-#ifdef FUNCTION_fixmadddiv2_DD
-inline FIXP_DBL fixmadddiv2_DD(FIXP_DBL x, const FIXP_DBL a, const FIXP_DBL b) {
-  INT result;
-  asm("smmla %0, %1, %2, %3;\n" : "=r"(result) : "r"(a), "r"(b), "r"(x));
-  return result;
-}
-#endif /* #ifdef FUNCTION_fixmadddiv2_DD */
-
-#define FUNCTION_fixmsubdiv2_DD
-#ifdef FUNCTION_fixmsubdiv2_DD
-inline FIXP_DBL fixmsubdiv2_DD(FIXP_DBL x, const FIXP_DBL a, const FIXP_DBL b) {
-  INT result;
-  asm("smmls %0, %1, %2, %3;\n" : "=r"(result) : "r"(a), "r"(b), "r"(x));
-  return result;
-}
-#endif /* #ifdef FUNCTION_fixmsubdiv2_DD */
-
-#else
-#define FUNCTION_fixmadddiv2_DD
-#ifdef FUNCTION_fixmadddiv2_DD
-inline FIXP_DBL fixmadddiv2_DD(FIXP_DBL x, const FIXP_DBL a, const FIXP_DBL b) {
-  INT discard = 0;
-  INT result = x;
-  asm("smlal %0, %1, %2, %3;\n" : "+r"(discard), "+r"(result) : "r"(a), "r"(b));
-  return result;
-}
-#endif /* FUNCTION_fixmadddiv2_DD */
-#endif /* __ARM_ARCH_6__ */
-
-#if defined(__ARM_ARCH_5TE__) || defined(__ARM_ARCH_6__)
-
-#define FUNCTION_fixmadddiv2_DS
-#ifdef FUNCTION_fixmadddiv2_DS
-inline FIXP_DBL fixmadddiv2_DS(FIXP_DBL x, const FIXP_DBL a, const FIXP_SGL b) {
-  INT result;
-  asm("smlawb %0, %1, %2, %3 " : "=r"(result) : "r"(a), "r"(b), "r"(x));
-  return result;
-}
-#endif /* #ifdef FUNCTION_fixmadddiv2_DS */
-
-#endif /* defined(__ARM_ARCH_5TE__) || defined(__ARM_ARCH_6__) */
-#endif /* toolchain */
-
-#define FUNCTION_fixmadddiv2BitExact_DD
-#ifdef FUNCTION_fixmadddiv2BitExact_DD
-#define fixmadddiv2BitExact_DD(a, b, c) fixmadddiv2_DD(a, b, c)
-#endif /* #ifdef FUNCTION_fixmadddiv2BitExact_DD */
-
-#define FUNCTION_fixmsubdiv2BitExact_DD
-#ifdef FUNCTION_fixmsubdiv2BitExact_DD
-inline FIXP_DBL fixmsubdiv2BitExact_DD(FIXP_DBL x, const FIXP_DBL a,
-                                       const FIXP_DBL b) {
-  return x - fixmuldiv2BitExact_DD(a, b);
-}
-#endif /* #ifdef FUNCTION_fixmsubdiv2BitExact_DD */
-
-#define FUNCTION_fixmadddiv2BitExact_DS
-#ifdef FUNCTION_fixmadddiv2BitExact_DS
-#define fixmadddiv2BitExact_DS(a, b, c) fixmadddiv2_DS(a, b, c)
-#endif /* #ifdef FUNCTION_fixmadddiv2BitExact_DS */
-
-#define FUNCTION_fixmsubdiv2BitExact_DS
-#ifdef FUNCTION_fixmsubdiv2BitExact_DS
-inline FIXP_DBL fixmsubdiv2BitExact_DS(FIXP_DBL x, const FIXP_DBL a,
-                                       const FIXP_SGL b) {
-  return x - fixmuldiv2BitExact_DS(a, b);
-}
-#endif /* #ifdef FUNCTION_fixmsubdiv2BitExact_DS */
-
-/* #############################################################################
- */
-  /* #############################################################################
-   */
-
-#endif /* !defined(FIXMADD_ARM_H) */
+#endif /* !defined(FIXMADD_X86_H) */

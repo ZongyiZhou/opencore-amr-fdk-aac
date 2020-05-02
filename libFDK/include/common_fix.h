@@ -333,6 +333,13 @@ FDK_INLINE FIXP_DBL fPow2AddDiv2(FIXP_DBL x, FIXP_SGL a) {
   return fixpadddiv2_S(x, a);
 }
 
+FDK_INLINE FIXP_DBL fSumPow2Div2(FIXP_DBL a, FIXP_DBL b) {
+  return fixsumpow2div2_D(a, b);
+}
+FDK_INLINE FIXP_DBL fSumPow2Div2(FIXP_SGL a, FIXP_SGL b) {
+  return fixpow2div2_S(a) + fixpow2div2_S(b);
+}
+
 /* y = 2*(x+0.5*a*b) = (2x+a*b) */
 FDK_INLINE FIXP_DBL fMultAdd(FIXP_DBL x, FIXP_DBL a, FIXP_DBL b) {
   return fixmadd_DD(x, a, b);
