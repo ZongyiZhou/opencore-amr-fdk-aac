@@ -165,31 +165,27 @@ static void FDKaacEnc_quantizeLines(INT gain, INT noOfLines,
 *****************************************************************************/
 static void FDKaacEnc_invQuantizeLines(INT gain, INT noOfLines,
                                        SHORT *quantSpectrum,
-                                       FIXP_DBL *mdctSpectrum)
-
-{
-  INT iquantizermod;
-  INT iquantizershift;
+                                       FIXP_DBL *mdctSpectrum) {
   INT line;
 
-  iquantizermod = gain & 3;
-  iquantizershift = gain >> 2;
-
   for (line = 0; line < noOfLines; line++) {
-    if (quantSpectrum[line] < 0) {
+    if (quantSpectrum[line] != 0) {
+      INT iquantizermod = gain & 3;
+      INT iquantizershift = gain >> 2;
       FIXP_DBL accu;
       INT ex, specExp, tabIndex;
       FIXP_DBL s, t;
 
-      accu = (FIXP_DBL)-quantSpectrum[line];
+      FIXP_DBL sign = quantSpectrum[line];
+      accu = fixp_abs(sign);
 
-      ex = CountLeadingBits(accu);
+      ex = CntLeadingZeros(accu);
       accu <<= ex;
-      specExp = (DFRACT_BITS - 1) - ex;
+      specExp = DFRACT_BITS - ex;
 
       FDK_ASSERT(specExp < 14); /* this fails if abs(value) > 8191 */
 
-      tabIndex = (INT)(accu >> (DFRACT_BITS - 2 - MANT_DIGITS)) & (~MANT_SIZE);
+      tabIndex = ((UINT)accu >> (DFRACT_BITS - 1 - MANT_DIGITS)) & (~MANT_SIZE);
 
       /* calculate "mantissa" ^4/3 */
       s = FDKaacEnc_mTab_4_3Elc[tabIndex];
@@ -205,47 +201,9 @@ static void FDKaacEnc_invQuantizeLines(INT gain, INT noOfLines,
       specExp = FDKaacEnc_specExpTableComb[iquantizermod][specExp] -
                 1; /* -1 to avoid overflows in accu */
 
-      if ((-iquantizershift - specExp) < 0)
-        accu <<= -(-iquantizershift - specExp);
-      else
-        accu >>= -iquantizershift - specExp;
+      accu = scaleValue(accu, iquantizershift + specExp);
 
-      mdctSpectrum[line] = -accu;
-    } else if (quantSpectrum[line] > 0) {
-      FIXP_DBL accu;
-      INT ex, specExp, tabIndex;
-      FIXP_DBL s, t;
-
-      accu = (FIXP_DBL)(INT)quantSpectrum[line];
-
-      ex = CountLeadingBits(accu);
-      accu <<= ex;
-      specExp = (DFRACT_BITS - 1) - ex;
-
-      FDK_ASSERT(specExp < 14); /* this fails if abs(value) > 8191 */
-
-      tabIndex = (INT)(accu >> (DFRACT_BITS - 2 - MANT_DIGITS)) & (~MANT_SIZE);
-
-      /* calculate "mantissa" ^4/3 */
-      s = FDKaacEnc_mTab_4_3Elc[tabIndex];
-
-      /* get approperiate exponent multiplier for specExp^3/4 combined with
-       * scfMod */
-      t = FDKaacEnc_specExpMantTableCombElc[iquantizermod][specExp];
-
-      /* multiply "mantissa" ^4/3 with exponent multiplier */
-      accu = fMult(s, t);
-
-      /* get approperiate exponent shifter */
-      specExp = FDKaacEnc_specExpTableComb[iquantizermod][specExp] -
-                1; /* -1 to avoid overflows in accu */
-
-      if ((-iquantizershift - specExp) < 0)
-        accu <<= -(-iquantizershift - specExp);
-      else
-        accu >>= -iquantizershift - specExp;
-
-      mdctSpectrum[line] = accu;
+      mdctSpectrum[line] = sign > 0 ? accu : -accu;
     } else {
       mdctSpectrum[line] = FL2FXCONST_DBL(0.0f);
     }
@@ -286,6 +244,10 @@ void FDKaacEnc_QuantizeSpectrum(INT sfbCnt, INT maxSfbPerGroup, INT sfbPerGroup,
     }
 }
 
+FDK_INLINE FIXP_DBL fixp_diffAbs(FIXP_DBL a, FIXP_DBL b) {
+  return fixp_abs((a ^ b) < 0 ? a + b : b - a);
+}
+
 /*****************************************************************************
 
     functionname: FDKaacEnc_calcSfbDist
@@ -298,7 +260,7 @@ void FDKaacEnc_QuantizeSpectrum(INT sfbCnt, INT maxSfbPerGroup, INT sfbPerGroup,
 FIXP_DBL FDKaacEnc_calcSfbDist(const FIXP_DBL *mdctSpectrum,
                                SHORT *quantSpectrum, INT noOfLines, INT gain,
                                INT dZoneQuantEnable) {
-  INT i, scale;
+  INT i;
   FIXP_DBL xfsf;
   FIXP_DBL diff;
   FIXP_DBL invQuantSpec;
@@ -317,16 +279,22 @@ FIXP_DBL FDKaacEnc_calcSfbDist(const FIXP_DBL *mdctSpectrum,
     FDKaacEnc_invQuantizeLines(gain, 1, &quantSpectrum[i], &invQuantSpec);
 
     /* dist */
-    diff = fixp_abs(fixp_abs(invQuantSpec) - fixp_abs(mdctSpectrum[i] >> 1));
+    diff = fixp_diffAbs(invQuantSpec, (mdctSpectrum[i] >> 1));
 
-    scale = CountLeadingBits(diff);
-    diff = scaleValue(diff, scale);
-    diff = fPow2(diff);
-    scale = fixMin(2 * (scale - 1), DFRACT_BITS - 1);
+    if (diff != 0) {
+      INT scale = DFRACT_BITS * 2 - CntLeadingZeros(diff) * 2;
+#ifdef __LP64__
+      diff = ((INT64)diff * diff) >> fMin(scale, DFRACT_BITS - 3);
+#else
+      if (scale > DFRACT_BITS - 3) {
+        diff = ((INT64)diff * diff) >> (DFRACT_BITS - 3);
+      } else {
+        diff = (diff * diff) >> scale;
+      }
+#endif
 
-    diff = scaleValue(diff, -scale);
-
-    xfsf = xfsf + diff;
+      xfsf = xfsf + diff;
+    }
   }
 
   xfsf = CalcLdData(xfsf);
@@ -348,7 +316,7 @@ void FDKaacEnc_calcSfbQuantEnergyAndDist(FIXP_DBL *mdctSpectrum,
                                          SHORT *quantSpectrum, INT noOfLines,
                                          INT gain, FIXP_DBL *en,
                                          FIXP_DBL *dist) {
-  INT i, scale;
+  INT i;
   FIXP_DBL invQuantSpec;
   FIXP_DBL diff;
 
@@ -369,17 +337,22 @@ void FDKaacEnc_calcSfbQuantEnergyAndDist(FIXP_DBL *mdctSpectrum,
     energy += fPow2(invQuantSpec);
 
     /* dist */
-    diff = fixp_abs(fixp_abs(invQuantSpec) - fixp_abs(mdctSpectrum[i] >> 1));
+    diff = fixp_diffAbs(invQuantSpec, mdctSpectrum[i] >> 1);
 
-    scale = CountLeadingBits(diff);
-    diff = scaleValue(diff, scale);
-    diff = fPow2(diff);
+    if (diff != 0) {
+      INT scale = DFRACT_BITS * 2 - CntLeadingZeros(diff) * 2;
+#ifdef __LP64__
+      diff = ((INT64)diff * diff) >> fMin(scale, DFRACT_BITS - 3);
+#else
+      if (scale > DFRACT_BITS - 3) {
+        diff = ((INT64)diff * diff) >> (DFRACT_BITS - 3);
+      } else {
+        diff = (diff * diff) >> scale;
+      }
+#endif
 
-    scale = fixMin(2 * (scale - 1), DFRACT_BITS - 1);
-
-    diff = scaleValue(diff, -scale);
-
-    distortion += diff;
+      distortion += diff;
+    }
   }
 
   *en = CalcLdData(energy) + FL2FXCONST_DBL(0.03125f);
