@@ -117,9 +117,9 @@ static void FDKaacEnc_quantizeLines(INT gain, INT noOfLines,
                                     const FIXP_DBL *mdctSpectrum,
                                     SHORT *quaSpectrum, INT dZoneQuantEnable) {
   int line;
-  FIXP_DBL k = FL2FXCONST_DBL(0.0f);
+  FIXP_DBL k;
   FIXP_QTD quantizer = FDKaacEnc_quantTableQ[(-gain) & 3];
-  INT quantizershift = ((-gain) >> 2) + 1;
+  const INT quantizershift = ((-gain) >> 2) + 1;
   const INT kShift = 16;
 
   if (dZoneQuantEnable)
@@ -130,38 +130,24 @@ static void FDKaacEnc_quantizeLines(INT gain, INT noOfLines,
   for (line = 0; line < noOfLines; line++) {
     FIXP_DBL accu = fMultDiv2(mdctSpectrum[line], quantizer);
 
-    if (accu < FL2FXCONST_DBL(0.0f)) {
-      accu = -accu;
+    if (accu != FL2FXCONST_DBL(0.0f)) {
+      FIXP_DBL sign = accu;
+      accu = fixp_abs(accu);
       /* normalize */
-      INT accuShift = CntLeadingZeros(accu) - 1; /* CountLeadingBits() is not
-                                                    necessary here since test
-                                                    value is always > 0 */
+      INT accuShift = CntLeadingZeros(accu); /* CountLeadingBits() is not
+                                                necessary here since test
+                                                value is always > 0 */
       accu <<= accuShift;
-      INT tabIndex =
-          (INT)(accu >> (DFRACT_BITS - 2 - MANT_DIGITS)) & (~MANT_SIZE);
-      INT totalShift = quantizershift - accuShift + 1;
+      UINT tabIndex =
+          ((UINT)accu >> (DFRACT_BITS - 1 - MANT_DIGITS)) & (~MANT_SIZE);
+      INT totalShift = quantizershift - accuShift + 2;
       accu = fMultDiv2(FDKaacEnc_mTab_3_4[tabIndex],
                        FDKaacEnc_quantTableE[totalShift & 3]);
       totalShift = (16 - 4) - (3 * (totalShift >> 2));
       FDK_ASSERT(totalShift >= 0); /* MAX_QUANT_VIOLATION */
       accu >>= fixMin(totalShift, DFRACT_BITS - 1);
-      quaSpectrum[line] =
-          (SHORT)(-((LONG)(k + accu) >> (DFRACT_BITS - 1 - 16)));
-    } else if (accu > FL2FXCONST_DBL(0.0f)) {
-      /* normalize */
-      INT accuShift = CntLeadingZeros(accu) - 1; /* CountLeadingBits() is not
-                                                    necessary here since test
-                                                    value is always > 0 */
-      accu <<= accuShift;
-      INT tabIndex =
-          (INT)(accu >> (DFRACT_BITS - 2 - MANT_DIGITS)) & (~MANT_SIZE);
-      INT totalShift = quantizershift - accuShift + 1;
-      accu = fMultDiv2(FDKaacEnc_mTab_3_4[tabIndex],
-                       FDKaacEnc_quantTableE[totalShift & 3]);
-      totalShift = (16 - 4) - (3 * (totalShift >> 2));
-      FDK_ASSERT(totalShift >= 0); /* MAX_QUANT_VIOLATION */
-      accu >>= fixMin(totalShift, DFRACT_BITS - 1);
-      quaSpectrum[line] = (SHORT)((LONG)(k + accu) >> (DFRACT_BITS - 1 - 16));
+      accu = (k + accu) >> (DFRACT_BITS - 1 - 16);
+      quaSpectrum[line] = (SHORT)(sign > 0 ? accu : -accu);
     } else {
       quaSpectrum[line] = 0;
     }
