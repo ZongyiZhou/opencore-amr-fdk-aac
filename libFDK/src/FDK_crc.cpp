@@ -375,33 +375,31 @@ static inline INT calcCrc_Bits(USHORT *const pCrc, USHORT crcMask,
 
 static inline INT calcCrc_Bytes(USHORT *const pCrc, const USHORT *pCrcLookup,
                                 HANDLE_FDK_BITSTREAM hBs, INT nBytes) {
-  int i;
   USHORT crc = *pCrc; /* get crc value */
 
+  INT i = nBytes;
   if (hBs != NULL) {
-    ULONG data;
-    INT bits;
-    for (i = 0; i < (nBytes >> 2); i++) {
-      data = (ULONG)FDKreadBits(hBs, 32);
-      crc =
-          (crc << 8) ^ pCrcLookup[((crc >> 8) ^ ((USHORT)(data >> 24))) & 0xFF];
-      crc =
-          (crc << 8) ^ pCrcLookup[((crc >> 8) ^ ((USHORT)(data >> 16))) & 0xFF];
-      crc =
-          (crc << 8) ^ pCrcLookup[((crc >> 8) ^ ((USHORT)(data >> 8))) & 0xFF];
-      crc =
-          (crc << 8) ^ pCrcLookup[((crc >> 8) ^ ((USHORT)(data >> 0))) & 0xFF];
+    for (; i >= 4; i -= 4) {
+      UINT data = FDKreadBits(hBs, 32);
+      crc = (crc << 8) ^ pCrcLookup[(UCHAR)((crc >> 8) ^ (data >> 24))];
+      crc = (crc << 8) ^ pCrcLookup[(UCHAR)((crc >> 8) ^ (data >> 16))];
+      crc = (crc << 8) ^ pCrcLookup[(UCHAR)((crc ^ data) >> 8)];
+      crc = (crc << 8) ^ pCrcLookup[(UCHAR)((crc >> 8) ^ data)];
     }
-    bits = (nBytes & 3) << 3;
-    if (bits > 0) {
-      data = (ULONG)FDKreadBits(hBs, bits);
-      for (bits -= 8; bits >= 0; bits -= 8)
-        crc = (crc << 8) ^
-              pCrcLookup[((crc >> 8) ^ (USHORT)(data >> bits)) & 0xFF];
+    if (i > 0) {
+      UINT data = FDKreadBits(hBs, i * 8);
+      switch (i) {
+      case 3:
+        crc = (crc << 8) ^ pCrcLookup[(UCHAR)((crc >> 8) ^ (data >> 16))];
+      case 2:
+        crc = (crc << 8) ^ pCrcLookup[(UCHAR)((crc ^ data) >> 8)];
+      case 1:
+        crc = (crc << 8) ^ pCrcLookup[(UCHAR)((crc >> 8) ^ data)];
+      }
     }
   } else {
-    for (i = 0; i < nBytes; i++) {
-      crc = (crc << 8) ^ pCrcLookup[(crc >> 8) & 0xFF];
+    for (; i > 0; i--) {
+      crc = (crc << 8) ^ pCrcLookup[(UCHAR)(crc >> 8)];
     }
   }
 
