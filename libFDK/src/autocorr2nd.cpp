@@ -190,98 +190,95 @@ INT autoCorr2nd_cplx(
     const FIXP_DBL *imBuffer, /*!< Pointer to imag part of input samples */
     const int len /*!< Number of input samples (should be smaller than 128) */
 ) {
-  int j, autoCorrScaling, mScale, len_scale;
+  int j, autoCorrScaling, mScale;
 
-  FIXP_DBL accu0, accu1, accu2, accu3, accu4, accu5, accu6, accu7, accu8;
+#ifdef __LP64__
+  const int len_scale = 0;
+  INT64
+#else
+  int len_scale = 31 - CntLeadingZeros(len - 1);
+  FIXP_DBL
+#endif
+      accu0, accu1, accu2, accu3, accu4, accu5, accu6, accu7, accu8;
 
   const FIXP_DBL *pReBuf, *pImBuf;
 
   const FIXP_DBL *realBuf = reBuffer;
   const FIXP_DBL *imagBuf = imBuffer;
 
-  (len > 64) ? (len_scale = 6) : (len_scale = 5);
-  /*
-    r00r,
-    r11r,r22r
-    r01r,r12r
-    r01i,r12i
-    r02r,r02i
-  */
-  accu1 = accu3 = accu5 = accu7 = accu8 = FL2FXCONST_DBL(0.0f);
+  accu1 = accu3 = accu5 = FL2FXCONST_DBL(0.0f);
 
   pReBuf = realBuf - 2, pImBuf = imagBuf - 2;
-  accu7 +=
-      ((fMultDiv2(pReBuf[2], pReBuf[0]) + fMultDiv2(pImBuf[2], pImBuf[0])) >>
-       len_scale);
-  accu8 +=
-      ((fMultDiv2(pImBuf[2], pReBuf[0]) - fMultDiv2(pReBuf[2], pImBuf[0])) >>
-       len_scale);
+  FIXP_DBL cRe, cIm;
+  cplxMultDiv2(&cRe, &cIm, pReBuf[0], pImBuf[0], pImBuf[2], pReBuf[2]);
+  accu7 = cIm >> len_scale;
+  accu8 = cRe >> len_scale;
 
   pReBuf = realBuf - 1, pImBuf = imagBuf - 1;
   for (j = (len - 1); j != 0; j--, pReBuf++, pImBuf++) {
-    accu1 += ((fPow2Div2(pReBuf[0]) + fPow2Div2(pImBuf[0])) >> len_scale);
-    accu3 +=
-        ((fMultDiv2(pReBuf[0], pReBuf[1]) + fMultDiv2(pImBuf[0], pImBuf[1])) >>
-         len_scale);
-    accu5 +=
-        ((fMultDiv2(pImBuf[1], pReBuf[0]) - fMultDiv2(pReBuf[1], pImBuf[0])) >>
-         len_scale);
-    accu7 +=
-        ((fMultDiv2(pReBuf[2], pReBuf[0]) + fMultDiv2(pImBuf[2], pImBuf[0])) >>
-         len_scale);
-    accu8 +=
-        ((fMultDiv2(pImBuf[2], pReBuf[0]) - fMultDiv2(pReBuf[2], pImBuf[0])) >>
-         len_scale);
+    accu1 += fSumPow2Div2(pReBuf[0], pImBuf[0]) >> len_scale;
+    cplxMultDiv2(&cRe, &cIm, pReBuf[0], pImBuf[0], pImBuf[1], pReBuf[1]);
+    accu3 += cIm >> len_scale;
+    accu5 += cRe >> len_scale;
+    cplxMultDiv2(&cRe, &cIm, pReBuf[0], pImBuf[0], pImBuf[2], pReBuf[2]);
+    accu7 += cIm >> len_scale;
+    accu8 += cRe >> len_scale;
   }
 
-  accu2 = ((fPow2Div2(realBuf[-2]) + fPow2Div2(imagBuf[-2])) >> len_scale);
+  accu2 = fSumPow2Div2(realBuf[-2], imagBuf[-2]) >> len_scale;
   accu2 += accu1;
 
-  accu1 += ((fPow2Div2(realBuf[len - 2]) + fPow2Div2(imagBuf[len - 2])) >>
-            len_scale);
-  accu0 = ((fPow2Div2(realBuf[len - 1]) + fPow2Div2(imagBuf[len - 1])) >>
-           len_scale) -
-          ((fPow2Div2(realBuf[-1]) + fPow2Div2(imagBuf[-1])) >> len_scale);
+  accu1 += fSumPow2Div2(realBuf[len - 2], imagBuf[len - 2]) >> len_scale;
+  accu0 = (fSumPow2Div2(realBuf[len - 1], imagBuf[len - 1]) -
+           fSumPow2Div2(realBuf[-1], imagBuf[-1])) >> len_scale;
   accu0 += accu1;
 
-  accu4 = ((fMultDiv2(realBuf[-1], realBuf[-2]) +
-            fMultDiv2(imagBuf[-1], imagBuf[-2])) >>
-           len_scale);
-  accu4 += accu3;
+  cplxMultDiv2(&cRe, &cIm, realBuf[-2], imagBuf[-2], imagBuf[-1], realBuf[-1]);
+  accu4 = accu3 + (cIm >> len_scale);
+  accu6 = accu5 + (cRe >> len_scale);
 
-  accu3 += ((fMultDiv2(realBuf[len - 1], realBuf[len - 2]) +
-             fMultDiv2(imagBuf[len - 1], imagBuf[len - 2])) >>
-            len_scale);
+  cplxMultDiv2(&cRe, &cIm, realBuf[len - 2], imagBuf[len - 2], imagBuf[len - 1], realBuf[len - 1]);
+  accu3 += cIm >> len_scale;
+  accu5 += cRe >> len_scale;
 
-  accu6 = ((fMultDiv2(imagBuf[-1], realBuf[-2]) -
-            fMultDiv2(realBuf[-1], imagBuf[-2])) >>
-           len_scale);
-  accu6 += accu5;
-
-  accu5 += ((fMultDiv2(imagBuf[len - 1], realBuf[len - 2]) -
-             fMultDiv2(realBuf[len - 1], imagBuf[len - 2])) >>
-            len_scale);
-
+#ifdef __LP64__
+  mScale = fNormz(accu0 | accu1 | accu2 | fixabs_64(accu3) | fixabs_64(accu4) |
+                  fixabs_64(accu5) | fixabs_64(accu6) | fixabs_64(accu7) |
+                  fixabs_64(accu8)) - 33;
+#else
   mScale =
-      CntLeadingZeros((accu0 | accu1 | accu2 | fAbs(accu3) | fAbs(accu4) |
-                       fAbs(accu5) | fAbs(accu6) | fAbs(accu7) | fAbs(accu8))) -
-      1;
+      CntLeadingZeros(accu0 | accu1 | accu2 | fAbs(accu3) | fAbs(accu4) |
+                      fAbs(accu5) | fAbs(accu6) | fAbs(accu7) | fAbs(accu8)) - 1;
+#endif
   autoCorrScaling = mScale - 1 - len_scale; /* -1 because of fMultDiv2*/
 
   /* Scale to common scale factor */
-  ac->r00r = (FIXP_DBL)accu0 << mScale;
-  ac->r11r = (FIXP_DBL)accu1 << mScale;
-  ac->r22r = (FIXP_DBL)accu2 << mScale;
-  ac->r01r = (FIXP_DBL)accu3 << mScale;
-  ac->r12r = (FIXP_DBL)accu4 << mScale;
-  ac->r01i = (FIXP_DBL)accu5 << mScale;
-  ac->r12i = (FIXP_DBL)accu6 << mScale;
-  ac->r02r = (FIXP_DBL)accu7 << mScale;
-  ac->r02i = (FIXP_DBL)accu8 << mScale;
-
-  ac->det =
-      (fMultDiv2(ac->r11r, ac->r22r) >> 1) -
-      ((fMultDiv2(ac->r12r, ac->r12r) + fMultDiv2(ac->r12i, ac->r12i)) >> 1);
+#ifdef __LP64__
+  if (mScale < 0) {
+    ac->r00r = (FIXP_DBL)(accu0 >> -mScale);
+    ac->r11r = (FIXP_DBL)(accu1 >> -mScale);
+    ac->r22r = (FIXP_DBL)(accu2 >> -mScale);
+    ac->r01r = (FIXP_DBL)(accu3 >> -mScale);
+    ac->r12r = (FIXP_DBL)(accu4 >> -mScale);
+    ac->r01i = (FIXP_DBL)(accu5 >> -mScale);
+    ac->r12i = (FIXP_DBL)(accu6 >> -mScale);
+    ac->r02r = (FIXP_DBL)(accu7 >> -mScale);
+    ac->r02i = (FIXP_DBL)(accu8 >> -mScale);
+  } else
+#endif
+  {
+    ac->r00r = (FIXP_DBL)accu0 << mScale;
+    ac->r11r = (FIXP_DBL)accu1 << mScale;
+    ac->r22r = (FIXP_DBL)accu2 << mScale;
+    ac->r01r = (FIXP_DBL)accu3 << mScale;
+    ac->r12r = (FIXP_DBL)accu4 << mScale;
+    ac->r01i = (FIXP_DBL)accu5 << mScale;
+    ac->r12i = (FIXP_DBL)accu6 << mScale;
+    ac->r02r = (FIXP_DBL)accu7 << mScale;
+    ac->r02i = (FIXP_DBL)accu8 << mScale;
+  }
+  ac->det = (fMultDiv2(ac->r11r, ac->r22r) - fMultDiv2(ac->r12r, ac->r12r) -
+             fMultDiv2(ac->r12i, ac->r12i)) >> 1;
   mScale = CntLeadingZeros(fAbs(ac->det)) - 1;
 
   ac->det <<= mScale;
