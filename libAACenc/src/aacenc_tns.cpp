@@ -521,10 +521,10 @@ static inline INT FDKaacEnc_ScaleUpSpectrum(FIXP_DBL *dest, const FIXP_DBL *src,
                                             const INT stopLine) {
   INT i, scale;
 
-  FIXP_DBL maxVal = FL2FXCONST_DBL(0.f);
+  FIXP_DBL maxVal = fixp_abs(src[startLine]);
 
   /* Get highest value in given spectrum */
-  for (i = startLine; i < stopLine; i++) {
+  for (i = startLine + 1; i < stopLine; i++) {
     maxVal = fixMax(maxVal, fixp_abs(src[i]));
   }
   scale = CountLeadingBits(maxVal);
@@ -635,9 +635,9 @@ static void FDKaacEnc_MergedAutoCorrelation(
      * spectrum */
     idx0 = lpcStartLine[LOFILT];
     i = lpcStopLine - lpcStartLine[LOFILT];
-    idx1 = idx0 + i / 4;
-    idx2 = idx0 + i / 2;
-    idx3 = idx0 + i * 3 / 4;
+    idx1 = idx0 + (i >> 2);
+    idx2 = idx0 + (i >> 1);
+    idx3 = idx0 + (i * 3 >> 2);
     idx4 = lpcStopLine;
   } else {
     FDK_ASSERT(acfSplit[LOFILT] == 1);
@@ -658,14 +658,10 @@ static void FDKaacEnc_MergedAutoCorrelation(
 
   /* get scaling values for summation */
   INT nsc1, nsc2, nsc3, nsc4;
-  for (nsc1 = 1; (1 << nsc1) < (idx1 - idx0); nsc1++)
-    ;
-  for (nsc2 = 1; (1 << nsc2) < (idx2 - idx1); nsc2++)
-    ;
-  for (nsc3 = 1; (1 << nsc3) < (idx3 - idx2); nsc3++)
-    ;
-  for (nsc4 = 1; (1 << nsc4) < (idx4 - idx3); nsc4++)
-    ;
+  nsc1 = idx1 - idx0 - 1 <= 0 ? 1 : 32 - CntLeadingZeros(idx1 - idx0 - 1);
+  nsc2 = idx2 - idx1 - 1 <= 0 ? 1 : 32 - CntLeadingZeros(idx2 - idx1 - 1);
+  nsc3 = idx3 - idx2 - 1 <= 0 ? 1 : 32 - CntLeadingZeros(idx3 - idx2 - 1);
+  nsc4 = idx4 - idx3 - 1 <= 0 ? 1 : 32 - CntLeadingZeros(idx4 - idx3 - 1);
 
   /* compute autocorrelation value at lag zero, i. e. energy, for each quarter
    */
