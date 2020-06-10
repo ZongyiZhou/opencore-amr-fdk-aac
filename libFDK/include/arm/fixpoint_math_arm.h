@@ -103,10 +103,6 @@ amm-info@iis.fraunhofer.de
 #ifndef FIXPOINT_MATH_ARM_H
 #define FIXPOINT_MATH_ARM_H
 
-#if defined(__ARM_ARCH_8__) || defined(__ARM_ARCH_7_A__)
-#include <arm_neon.h>
-#endif
-
 #ifdef __ARM_ARCH_8__
 #define lrint(v) lrint_fast(v)
 inline int lrint_fast(double v) {
@@ -203,15 +199,27 @@ inline int lrint_fast(double v) {
 
 #define FUNCTION_llRightShift32
 inline UINT llRightShift32(UINT64 value, INT shift) {
-  UINT x;
+  union {
+    UINT64 u64;
+    struct {
+      UINT l32;
+      UINT h32;
+    };
+  } v = {value};
+  INT s;
   __asm__(
-    "lsr %0, %Q2, %1\n\t"
     "rsb %1, %1, #32\n\t"
-    "orr %0, %0, %Q2, lsl %1"
-    : "=r"(x), "+r"(shift)
-    : "r"(value)
+    "lsr %0, %0, %3\n\t"
+#if __thumb__
+    "lsl %1, %2, %1\n\t"
+    "orr %0, %0, %1"
+#else
+    "orr %0, %0, %2, lsl %1"
+#endif
+    : "+r"(v.l32), "=&r"(s)
+    : "r"(v.h32), "r"(shift)
   );
-  return x;
+  return v.l32;
 }
 #endif // __GNUC__
 
