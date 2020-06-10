@@ -193,7 +193,7 @@ void dit_fft_impl(FIXP_DBL *x, const INT ldn, const FIXP_STP *trigdata,
       cs0 = _mm_subs_epi16(cs0, cs1);      // [Cr 0 Ci 0 -Ci 0 0 0]
       cs0 = _mm_slli_epi32(cs0, 16);       // [0 Cr 0 Ci 0 -Ci 0 0]
 #else
-      __m128i cs0 = _mm_cvtsi64_si128(cs->w);     // [Cr Ci 0 0]
+      __m128i cs0 = _mm_loadl_epi64((__m128i*)&cs->w);     // [Cr Ci 0 0]
       __m128i cs1 = _mm_shuffle_epi32(cs0, 0xdf); // [0 0 Ci 0]
       cs0 = _mm_subs_epi16(cs0, cs1);      // [Cr Ci -Ci 0]
 #endif

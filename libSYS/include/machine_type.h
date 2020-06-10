@@ -108,6 +108,7 @@ amm-info@iis.fraunhofer.de
 #define MACHINE_TYPE_H
 
 #include <stddef.h> /* Needed to define size_t */
+#include <stdint.h>
 
 #if defined(__ANDROID__) && (__GNUC__ == 4) && (__GNUC_MINOR__ == 4) && \
     (__GNUC_GNU_INLINE__ == 1)
@@ -186,9 +187,6 @@ typedef unsigned __int64 UINT64;
 #endif
 #endif
 
-#ifdef _M_X64
-#define __LP64__
-#endif
 #else
 typedef long long INT64;
 typedef unsigned long long UINT64;
@@ -198,6 +196,10 @@ typedef unsigned long long UINT64;
 #define HAVE_BSWAP
 #endif
 #endif  // toolchain
+
+#if !defined(__LP64__) && (defined(_M_X64) || defined(__x86_64__))
+#define __LP64__
+#endif
 
 typedef signed int INT;
 typedef unsigned int UINT;
