@@ -107,8 +107,16 @@ amm-info@iis.fraunhofer.de
 
 #define FUNCTION_bitreverse
 inline UINT bitreverse(UINT x, UINT clz) {
-  asm("rbit %0, %0" : "+r"(x));
-  return x >> clz;
+  UINT r;
+  asm(
+#ifdef __ARM_ARCH_8__
+    "rbit %w0, %w1"
+#else
+    "rbit %0, %1"
+#endif
+    : "=r"(r) : "r"(x)
+  );
+  return r >> clz;
 }
 
 #endif /* Toolchain selection. */

@@ -105,6 +105,10 @@ amm-info@iis.fraunhofer.de
 
 #if defined(__arm__)
 
+#if defined(__ARM_ARCH_8__) || defined(__ARM_ARCH_7_A__)
+#include <arm_neon.h>
+#endif
+
 #if defined(__GNUC__)
 /* ARM gcc*/
 
