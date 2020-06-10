@@ -239,7 +239,7 @@ FDK_INLINE FIXP_DBL fLog2FP(FIXP_DBL x_m, INT x_e, INT *result_e) {
     double r = log(x_m) / log(2.0) + (x_e - DFRACT_BITS + 1);
     int offset = x_e - clz + 1;
     if (offset) {
-      UINT norm = fNorm(offset);
+      UINT norm = fNorm((FIXP_DBL)offset);
       r *= 1 << (norm - 1);
       *result_e = DFRACT_BITS - norm;
     } else {

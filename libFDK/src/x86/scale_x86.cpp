@@ -211,7 +211,7 @@ void scaleValuesWithFactor(FIXP_DBL *vector, FIXP_DBL factor, INT len,
 #ifdef __LP64__
       *vector = ((INT64)*vector * factor) >> (31 - scalefactor);
 #else
-      vector = fMult(*vector, factor) >> -scalefactor;
+      *vector = fMult(*vector, factor) >> -scalefactor;
 #endif
     }
   }
