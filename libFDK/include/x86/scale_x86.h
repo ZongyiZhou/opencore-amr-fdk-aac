@@ -107,18 +107,16 @@ amm-info@iis.fraunhofer.de
 inline FIXP_DBL scaleValueSaturate(const FIXP_DBL value,
                                    INT scalefactor /* in range -31 ... +31 */
 ) {
-  if (scalefactor > 0) {
-    __m128d d = _mm_cvtsi32_sd(d, value);
+  if (value == 0) return 0;
+  __m128d d = _mm_cvtsi32_sd(d, value);
 #ifdef __LP64__
-    __m128i i64 = _mm_cvtsi64_si128(((INT64)scalefactor) << 52);
+  __m128i i64 = _mm_cvtsi64_si128(((UINT64)scalefactor) << 52);
 #else
-    __m128i i64 = _mm_slli_epi64(_mm_cvtsi32_si128(scalefactor), 52);
+  __m128i i64 = _mm_slli_epi64(_mm_cvtsi32_si128(scalefactor), 52);
 #endif
-    d = _mm_castsi128_pd(_mm_add_epi16(i64, _mm_castpd_si128(d)));
-    d = _mm_min_sd(d, _mm_set_sd((double)FDK_INT_MAX));
-    return _mm_cvtsd_si32(d);
-  }
-  return value >> -scalefactor;
+  d = _mm_castsi128_pd(_mm_add_epi16(i64, _mm_castpd_si128(d)));
+  d = _mm_min_sd(d, _mm_set_sd((double)MAXVAL_DBL));
+  return _mm_cvtsd_si32(d);
 }
 
 #if SAMPLE_BITS == 16
