@@ -103,25 +103,25 @@ amm-info@iis.fraunhofer.de
 #if !defined(SCALE_ARM_H)
 #define SCALE_ARM_H
 
-#if defined(__GNUC__) /* GCC Compiler */
-
 #ifdef __ARM_ARCH_6__
+
+#if defined(__GNUC__) /* GCC Compiler */
 
 template<int scale>
 inline INT shiftRightSat(INT src) {
   INT result;
   asm("ssat %0,%2,%1 asr %3"
-      : "=&r"(result)
+      : "=r"(result)
       : "r"(src), "M"(SAMPLE_BITS), "M"(scale)
   );
   return result;
 }
 
 template<int scale>
-inline static INT shiftLeftSat(INT src) {
+inline INT shiftLeftSat(INT src) {
   INT result;
   asm("ssat %0,%2,%1"
-      : "=&r"(result)
+      : "=r"(result)
       : "r"(src), "M"(SAMPLE_BITS - scale)
   );
   return result << scale;
@@ -139,19 +139,44 @@ inline INT shiftRightSat<0>(INT src) {
 #endif
 #define SATURATE_INT_PCM_LEFT_SHIFT(src, scale) shiftLeftSat<scale>(src)
 
-#endif /* __ARM_ARCH_6__ */
-
 #endif /* compiler selection */
+
+#ifdef __ARM_ARCH_7_A__
+#define FUNCTION_scaleValueSaturate
+inline FIXP_DBL scaleValueSaturate(const FIXP_DBL value,
+                                   INT scalefactor /* in range -31 ... +31 */
+) {
+  int32x2_t v{value, value}, s{scalefactor, scalefactor};
+  v = vqrshl_s32(v, s);
+  return v[0];
+}
+#endif // __ARM_ARCH_7_A__
+
+#elif defined(__ARM_ARCH_8__)
+#define FUNCTION_scaleValueSaturate
+inline FIXP_DBL scaleValueSaturate(const FIXP_DBL value,
+                                   INT scalefactor /* in range -31 ... +31 */
+) {
+#ifdef __clang__
+  int r;
+  __asm__("sqrshl %0.4s, %1.4s, %2.4s" : "=w"(r) : "w"(value), "w"(scalefactor));
+  return r;
+#else
+  return vqrshls_s32(value, scalefactor);
+#endif
+}
+
+#endif /* arch selection */
+
 
 #define FUNCTION_scaleValueInPlace
 inline void scaleValueInPlace(FIXP_DBL *value, /*!< Value */
                               INT scalefactor  /*!< Scalefactor */
 ) {
-  INT newscale;
-  if ((newscale = scalefactor) >= 0)
-    *value <<= newscale;
+  if (scalefactor >= 0)
+    *value <<= scalefactor;
   else
-    *value >>= -newscale;
+    *value >>= -scalefactor;
 }
 
 #define SATURATE_RIGHT_SHIFT(src, scale, dBits)                                \
