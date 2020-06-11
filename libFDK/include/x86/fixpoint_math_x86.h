@@ -158,7 +158,7 @@ inline FIXP_DBL invSqrtNorm2(FIXP_DBL op_m, INT *result_e) {
  * \return mantissa of the result with implizit exponent of 31
  */
 inline FIXP_DBL invFixp(FIXP_DBL op) {
-  if ((op == (FIXP_DBL)0) || (op == (FIXP_DBL)1)) {
+  if ((UINT)op <= 1) {
     return ((LONG)0x7fffffff);
   }
 #ifdef __GNUC__
@@ -224,8 +224,15 @@ inline UINT llRightShift32(UINT64 value, INT shift) {
 #ifdef _MSC_VER
   return (UINT)__ull_rshift(value, shift);
 #else
-  __asm__("shrd %%cl, %%edx, %%eax" : "+A"(value) : "c"(shift));
-  return (UINT)value;
+  union {
+    UINT64 u64;
+    struct {
+      UINT l32;
+      UINT h32;
+    };
+  } v = {value};
+  __asm__("shrd %%cl, %1, %0" : "+r"(v.l32) : "r"(v.h32), "c"(shift));
+  return v.l32;
 #endif
 }
 #endif // __LP64__
