@@ -129,16 +129,16 @@ inline void cplxMultDiv2(FIXP_DBL *c_Re, FIXP_DBL *c_Im, const FIXP_DBL a_Re,
       : "r"(a_Re), "r"(a_Im), "r"(b_Re), "r"(b_Im));
 #elif defined(__ARM_ARCH_6__)
   asm("smmul %0, %2, %4;\n"     /* tmp1  = a_Re * b_Re */
-      "smmls %0, %3, %5, %0;\n" /* tmp1 -= a_Im * b_Im */
       "smmul %1, %2, %5;\n"     /* tmp2  = a_Re * b_Im */
+      "smmls %0, %3, %5, %0;\n" /* tmp1 -= a_Im * b_Im */
       "smmla %1, %3, %4, %1;\n" /* tmp2 += a_Im * b_Re */
       : "=&r"(tmp1), "=&r"(tmp2)
       : "r"(a_Re), "r"(a_Im), "r"(b_Re), "r"(b_Im));
 #else
   LONG discard;
   asm("smull %2, %0, %7, %6;\n" /* tmp1  = -a_Im * b_Im */
-      "smlal %2, %0, %3, %5;\n" /* tmp1 +=  a_Re * b_Re */
       "smull %2, %1, %3, %6;\n" /* tmp2  =  a_Re * b_Im */
+      "smlal %2, %0, %3, %5;\n" /* tmp1 +=  a_Re * b_Re */
       "smlal %2, %1, %4, %5;\n" /* tmp2 +=  a_Im * b_Re */
       : "=&r"(tmp1), "=&r"(tmp2), "=&r"(discard)
       : "r"(a_Re), "r"(a_Im), "r"(b_Re), "r"(b_Im), "r"(-a_Im));
@@ -148,44 +148,20 @@ inline void cplxMultDiv2(FIXP_DBL *c_Re, FIXP_DBL *c_Im, const FIXP_DBL a_Re,
 }
 #endif /* FUNCTION_cplxMultDiv2_32x32X2 */
 
-#if defined(FUNCTION_cplxMultDiv2_32x16)
-inline void cplxMultDiv2(FIXP_DBL *c_Re, FIXP_DBL *c_Im, const FIXP_DBL a_Re,
-                         const FIXP_DBL a_Im, FIXP_SPK wpk) {
-#ifdef __ARM_ARCH_8__
-  FIXP_DBL b_Im = FX_SGL2FX_DBL(wpk.v.im);
-  FIXP_DBL b_Re = FX_SGL2FX_DBL(wpk.v.re);
-  cplxMultDiv2(c_Re, c_Im, a_Re, a_Im, b_Re, b_Im);
-#else
-  LONG tmp1, tmp2;
-  const LONG w = wpk.w;
-  asm("smulwt %0, %3, %4;\n"
-      "rsb %1,%0,#0;\n"
-      "smlawb %0, %2, %4, %1;\n"
-      "smulwt %1, %2, %4;\n"
-      "smlawb %1, %3, %4, %1;\n"
-      : "=&r"(tmp1), "=&r"(tmp2)
-      : "r"(a_Re), "r"(a_Im), "r"(w));
-  *c_Re = tmp1;
-  *c_Im = tmp2;
-#endif
-}
-#endif /* FUNCTION_cplxMultDiv2_32x16 */
-
 #ifdef FUNCTION_cplxMultDiv2_32x16X2
 inline void cplxMultDiv2(FIXP_DBL *c_Re, FIXP_DBL *c_Im, const FIXP_DBL a_Re,
                          const FIXP_DBL a_Im, const FIXP_SGL b_Re,
                          const FIXP_SGL b_Im) {
 #ifdef __ARM_ARCH_8__
-  FIXP_DBL b_re = FX_SGL2FX_DBL(b_Re);
-  FIXP_DBL b_im = FX_SGL2FX_DBL(b_Im);
-  cplxMultDiv2(c_Re, c_Im, a_Re, a_Im, b_re, b_im);
+  *c_Re = (LONG)(((INT64)a_Re * b_Re - (INT64)a_Im * b_Im) >> 16);
+  *c_Im = (LONG)(((INT64)a_Re * b_Im + (INT64)a_Im * b_Re) >> 16);
 #else
   LONG tmp1, tmp2;
 
-  asm("smulwb %0, %3, %5;\n" /* %7   = -a_Im * b_Im */
-      "rsb %1,%0,#0;\n"
-      "smlawb %0, %2, %4, %1;\n" /* tmp1 =  a_Re * b_Re - a_Im * b_Im */
-      "smulwb %1, %2, %5;\n"     /* %7   =  a_Re * b_Im */
+  asm("smulwb %0, %3, %5;\n"     /* tmp1 = a_Im * b_Im */
+      "smulwb %1, %2, %5;\n"     /* tmp2 =  a_Re * b_Im */
+      "rsb %0,%0,#0;\n"          /* tmp1 = -a_Im * b_Im */
+      "smlawb %0, %2, %4, %0;\n" /* tmp1 =  a_Re * b_Re - a_Im * b_Im */
       "smlawb %1, %3, %4, %1;\n" /* tmp2 =  a_Im * b_Re + a_Re * b_Im */
       : "=&r"(tmp1), "=&r"(tmp2)
       : "r"(a_Re), "r"(a_Im), "r"(b_Re), "r"(b_Im));
@@ -195,6 +171,27 @@ inline void cplxMultDiv2(FIXP_DBL *c_Re, FIXP_DBL *c_Im, const FIXP_DBL a_Re,
 #endif
 }
 #endif /* FUNCTION_cplxMultDiv2_32x16X2 */
+
+#if defined(FUNCTION_cplxMultDiv2_32x16)
+inline void cplxMultDiv2(FIXP_DBL *c_Re, FIXP_DBL *c_Im, const FIXP_DBL a_Re,
+                         const FIXP_DBL a_Im, FIXP_SPK wpk) {
+#ifdef __ARM_ARCH_8__
+  cplxMultDiv2(c_Re, c_Im, a_Re, a_Im, wpk.v.re, wpk.v.im);
+#else
+  LONG tmp1, tmp2;
+  const LONG w = wpk.w;
+  asm("smulwt %0, %3, %4;\n"
+      "smulwt %1, %2, %4;\n"
+      "rsb %0, %0, #0;\n"
+      "smlawb %0, %2, %4, %0;\n"
+      "smlawb %1, %3, %4, %1;\n"
+      : "=&r"(tmp1), "=&r"(tmp2)
+      : "r"(a_Re), "r"(a_Im), "r"(w));
+  *c_Re = tmp1;
+  *c_Im = tmp2;
+#endif
+}
+#endif /* FUNCTION_cplxMultDiv2_32x16 */
 
 #endif
 
