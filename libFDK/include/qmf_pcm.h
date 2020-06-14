@@ -443,7 +443,6 @@ static void qmfAnaPrototypeFirSlot(
     FIXP_QAS *RESTRICT pFilterStates) {
   INT k;
 
-  FIXP_DBL accu;
   const FIXP_PFT *RESTRICT p_flt = p_filter;
   FIXP_DBL *RESTRICT pData_0 = analysisBuffer + 2 * no_channels - 1;
   FIXP_DBL *RESTRICT pData_1 = analysisBuffer;
@@ -457,7 +456,33 @@ static void qmfAnaPrototypeFirSlot(
 
   /* FIR filters 127..64 0..63 */
   for (k = 0; k < no_channels; k++) {
-    accu = fMultDiv2(p_flt[0], *sta_1);
+#if defined(__LP64__) && !defined(QMF_COEFF_16BIT)
+    INT64 accu = (INT64)p_flt[0] * *sta_1;
+    sta_1 -= staStep1;
+    accu += (INT64)p_flt[1] * *sta_1;
+    sta_1 -= staStep1;
+    accu += (INT64)p_flt[2] * *sta_1;
+    sta_1 -= staStep1;
+    accu += (INT64)p_flt[3] * *sta_1;
+    sta_1 -= staStep1;
+    accu += (INT64)p_flt[4] * *sta_1;
+    *pData_1++ = (FIXP_DBL)(accu >> (SAMPLE_BITS - 1));
+    sta_1 += staStep2;
+
+    p_flt += pfltStep;
+    accu = (INT64)p_flt[0] * *sta_0;
+    sta_0 += staStep1;
+    accu += (INT64)p_flt[1] * *sta_0;
+    sta_0 += staStep1;
+    accu += (INT64)p_flt[2] * *sta_0;
+    sta_0 += staStep1;
+    accu += (INT64)p_flt[3] * *sta_0;
+    sta_0 += staStep1;
+    accu += (INT64)p_flt[4] * *sta_0;
+    *pData_0-- = (FIXP_DBL)(accu >> (SAMPLE_BITS - 1));
+    sta_0 -= staStep2;
+#else
+    FIXP_DBL accu = fMultDiv2(p_flt[0], *sta_1);
     sta_1 -= staStep1;
     accu += fMultDiv2(p_flt[1], *sta_1);
     sta_1 -= staStep1;
@@ -481,6 +506,7 @@ static void qmfAnaPrototypeFirSlot(
     accu += fMultDiv2(p_flt[4], *sta_0);
     *pData_0-- = (accu << 1);
     sta_0 -= staStep2;
+#endif
   }
 }
 #endif /* !defined(FUNCTION_qmfAnaPrototypeFirSlot) */
