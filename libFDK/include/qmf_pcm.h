@@ -103,6 +103,10 @@ amm-info@iis.fraunhofer.de
 #ifndef QMF_PCM_H
 #define QMF_PCM_H
 
+#ifdef __x86__
+#include "x86/qmf_pcm_x86.h"
+#endif
+
 /*
    All Synthesis functions dependent on datatype INT_PCM_QMFOUT
    Should only be included by qmf.cpp, but not compiled separately, please
@@ -509,6 +513,8 @@ static void qmfAnaPrototypeFirSlot(
 #endif
   }
 }
+#else
+#undef FUNCTION_qmfAnaPrototypeFirSlot
 #endif /* !defined(FUNCTION_qmfAnaPrototypeFirSlot) */
 
 #ifndef FUNCTION_qmfAnaPrototypeFirSlot_NonSymmetric
