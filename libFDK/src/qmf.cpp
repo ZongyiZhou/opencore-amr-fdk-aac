@@ -139,6 +139,10 @@ amm-info@iis.fraunhofer.de
 #include "fixpoint_math.h"
 #include "dct.h"
 
+#ifdef __x86__
+#include "x86/qmf_x86.cpp"
+#endif
+
 #define QSSCALE (0)
 #define FX_DBL2FX_QSS(x) (x)
 #define FX_QSS2FX_DBL(x) (x)
