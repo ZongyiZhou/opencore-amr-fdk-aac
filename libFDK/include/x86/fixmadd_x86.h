@@ -103,11 +103,10 @@ amm-info@iis.fraunhofer.de
 #if !defined(FIXMADD_X86_H)
 #define FIXMADD_X86_H
 
-#if defined(__x86_64__) || defined(_M_X64)
 #define FUNCTION_fixsumpow2div2_D
 inline FIXP_DBL fixsumpow2div2_D(const FIXP_DBL a, const FIXP_DBL b) {
-  return ((INT64)a * a + (INT64)b * b) >> 32;
+  UINT64 r = (INT64)a * a + (INT64)b * b;
+  return (FIXP_DBL)(r >> 32);
 }
-#endif
 
 #endif /* !defined(FIXMADD_X86_H) */

@@ -138,7 +138,8 @@ inline FIXP_DBL fixmsubdiv2_DD(FIXP_DBL x, const FIXP_DBL a, const FIXP_DBL b) {
 
 #define FUNCTION_fixsumpow2div2_D
 inline FIXP_DBL fixsumpow2div2_D(const FIXP_DBL a, const FIXP_DBL b) {
-  return ((INT64)a * a + (INT64)b * b) >> 32;
+  UINT64 r = (INT64)a * a + (INT64)b * b;
+  return (FIXP_DBL)(r >> 32);
 }
 
 #elif defined(__GNUC__)
