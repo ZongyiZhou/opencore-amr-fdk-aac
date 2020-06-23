@@ -103,8 +103,6 @@ amm-info@iis.fraunhofer.de
 #if !defined(CLZ_ARM_H)
 #define CLZ_ARM_H
 
-#if defined(__arm__)
-
 #if defined(__ARM_ARCH_8__) || defined(__ARM_ARCH_7_A__)
 #include <arm_neon.h>
 #endif
@@ -124,28 +122,25 @@ inline INT fixnormz_D(LONG value) {
 }
 #endif /* #ifdef FUNCTION_fixnormz_D */
 
-#ifdef FUNCTION_fixnorm_D
 inline INT fixnorm_D(LONG value) {
   if (!value) return 0;
-  if (value < 0) value = ~value;
+#ifdef __ARM_ARCH_8__
+  INT r;
+  __asm__ ("cls %w0, %w1" : "=r"(r) : "r"(value));
+  return r;
+#else
+  value ^= value >> 31;
   return fixnormz_D(value) - 1;
+#endif
 }
-#endif /* #ifdef FUNCTION_fixnorm_D */
 
-#ifdef FUNCTION_fixnormz_S
 inline INT fixnormz_S(SHORT value) {
   return fixnormz_D(value) - 16;
 }
-#endif /* #ifdef FUNCTION_fixnormz_S */
 
-#ifdef FUNCTION_fixnorm_S
 inline INT fixnorm_S(SHORT value) {
-  LONG lvalue = (LONG)(value << 16);
-  if (!lvalue) return 0;
-  if (lvalue < 0) lvalue = ~lvalue;
-  return fixnormz_D(lvalue) - 1;
+  return fixnorm_D((LONG)value) - 16;
 }
-#endif /* #ifdef FUNCTION_fixnorm_S */
 
 #ifdef __ARM_ARCH_8__
 #define FUNCTION_fixnormz64
@@ -157,7 +152,5 @@ inline INT fNormz(INT64 value) {
 #endif
 
 #endif /* arm toolchain */
-
-#endif /* __arm__ */
 
 #endif /* !defined(CLZ_ARM_H) */
