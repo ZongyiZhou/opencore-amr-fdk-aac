@@ -123,10 +123,29 @@ inline INT fNormz(INT64 value) {
 #if !defined(__LZCNT__) || defined(__SANITIZE_ADDRESS__)
   if (value == 0) return 64;
 #endif
-  return __builtin_clzll(value);
+  return (INT)__builtin_clzll(value);
+}
+
+// clz without zero check
+inline INT clz64(INT64 value) {
+#ifdef __LZCNT__
+  return (INT)__builtin_clzll(value);
+#else
+  __asm__("bsrq %1, %0" : "=r"(value) : "r"(value));
+  return (INT)(63 - value);
+#endif
 }
 #endif
 
+// clz without zero check
+inline INT clz32(INT value) {
+#ifdef __LZCNT__
+  return __builtin_clz(value);
+#else
+  __asm__("bsrl %1, %0" : "=r"(value) : "r"(value));
+  return (INT)(31 - value);
+#endif
+}
 #elif _MSC_VER >= 1500
 
 #include <intrin.h>
@@ -158,6 +177,17 @@ inline INT fNormz(INT64 value) {
   return result ^ 63;
 #endif
 }
+
+// clz without zero check
+inline INT clz64(INT64 value) {
+#ifdef __AVX2__
+  return (INT)_lzcnt_u64(value);
+#else
+  unsigned long result;
+  _BitScanReverse64(&result, value);
+  return 63 - result;
+#endif
+}
 #endif
 
 inline INT fixnormz_S(SHORT value) {
@@ -168,6 +198,16 @@ inline INT fixnormz_S(SHORT value) {
   unsigned long result;
   _BitScanReverse(&result, value);
   return result ^ 15;
+#endif
+}
+
+inline INT clz32(INT value) {
+#ifdef __AVX2__
+  return (INT)_lzcnt_u32(value);
+#else
+  unsigned long result;
+  _BitScanReverse(&result, value);
+  return 31 - result;
 #endif
 }
 
