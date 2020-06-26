@@ -116,11 +116,9 @@ amm-info@iis.fraunhofer.de
 #define FUNCTION_fixnormz_S
 #define FUNCTION_fixnorm_S
 
-#ifdef FUNCTION_fixnormz_D
 inline INT fixnormz_D(LONG value) {
   return __builtin_clz(value);
 }
-#endif /* #ifdef FUNCTION_fixnormz_D */
 
 inline INT fixnorm_D(LONG value) {
   if (!value) return 0;
@@ -130,7 +128,7 @@ inline INT fixnorm_D(LONG value) {
   return r;
 #else
   value ^= value >> 31;
-  return fixnormz_D(value) - 1;
+  return __builtin_clz(value) - 1;
 #endif
 }
 
