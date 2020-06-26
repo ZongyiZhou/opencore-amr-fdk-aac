@@ -286,7 +286,7 @@ FDK_INLINE INT fAbs(INT x) { return fixabs_I(x); }
 
 #ifndef FUNCTION_fixnormz64
 FDK_INLINE INT fNormz(INT64 x) {
-  UINT y = (UINT)(x >> 32);
+  UINT y = (UINT64)x >> 32;
   if (y == 0) return fixnormz_D((INT)x) + 32;
   return fixnormz_D(y);
 }
