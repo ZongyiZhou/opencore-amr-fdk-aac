@@ -150,6 +150,27 @@ of the OUTPUT
 
 extern const FIXP_DBL invSqrtTab[SQRT_VALUES];
 
+/*****************************************************************************
+
+    functionname: fLog2
+    description:  calculate logarithm of base 2 of x_m * 2^(x_e)
+
+*****************************************************************************/
+#define LOG2_LUT_SIZE_LOG2 8
+const UINT LOG2_LUT_SIZE = (1 << LOG2_LUT_SIZE_LOG2);
+const UINT LOG2_LUT_MASK = (1 << (32 - LOG2_LUT_SIZE_LOG2)) - 1;
+const UINT LOG2_RESULT_SCALE_BITS =
+    31 - (DFRACT_BITS - LD_DATA_SHIFT - 1) + 32 - LOG2_LUT_SIZE_LOG2;
+const UINT LOG2_ROUNDING_OFFSET =
+    1 << (LOG2_LUT_SIZE_LOG2 + LOG2_RESULT_SCALE_BITS - 33);
+
+#if defined(__cpp_constexpr) && !defined(_MSC_VER)
+const
+#endif
+extern UINT log2_lut[LOG2_LUT_SIZE + 1];
+extern const UCHAR fnorm_lut[64];
+
+
 /*
  * Hardware specific implementations
  */
@@ -625,7 +646,9 @@ FIXP_DBL fDivNorm(FIXP_DBL num, FIXP_DBL denom, INT *result_e);
  * \return num/denum with exponent = 0
  */
 FIXP_DBL fDivNorm(FIXP_DBL num, FIXP_DBL denom);
+#endif
 
+#ifndef FUNCTION_fDivNormSigned
 /**
  * \brief Divide 2 signed FIXP_DBL values with normalization of input values.
  * \param num numerator
@@ -799,20 +822,6 @@ FIXP_DBL fPowInt(FIXP_DBL base_m, INT base_e, INT N, INT *result_e);
 
 
 // Calculate log(argument)/log(2) using lookup table and linear interpolation
-#define LOG2_LUT_SIZE_LOG2 8
-const UINT LOG2_LUT_SIZE = (1 << LOG2_LUT_SIZE_LOG2);
-const UINT LOG2_LUT_MASK = (1 << (32 - LOG2_LUT_SIZE_LOG2)) - 1;
-const UINT LOG2_RESULT_SCALE_BITS =
-    31 - (DFRACT_BITS - LD_DATA_SHIFT - 1) + 32 - LOG2_LUT_SIZE_LOG2;
-const UINT LOG2_ROUNDING_OFFSET =
-    1 << (LOG2_LUT_SIZE_LOG2 + LOG2_RESULT_SCALE_BITS - 33);
-
-#if defined(__cpp_constexpr) && !defined(_MSC_VER)
-const
-#endif
-extern UINT log2_lut[LOG2_LUT_SIZE + 1];
-extern const UCHAR fnorm_lut[32];
-
 FDK_INLINE FIXP_DBL fLog2_lookup(FIXP_DBL x_m, INT x_e, INT *result_e) {
   if (x_m <= FL2FXCONST_DBL(0.0f)) {
     *result_e = DFRACT_BITS - 1;
@@ -825,8 +834,7 @@ FDK_INLINE FIXP_DBL fLog2_lookup(FIXP_DBL x_m, INT x_e, INT *result_e) {
     UINT frac = mant & LOG2_LUT_MASK;
     UINT64 r = log2_lut[index] * (UINT64)(LOG2_LUT_MASK + 1 - frac) +
                log2_lut[index + 1] * (UINT64)frac;
-    int offset_1 = offset + 1;
-    int norm = fnorm_lut[offset_1 ^ (offset_1 >> 31)];
+    int norm = fnorm_lut[offset + 1 + 32];
     x_m = offset << norm;
     *result_e = DFRACT_BITS - 1 - norm;
     const UINT round_diff = (1 << (LOG2_RESULT_SCALE_BITS - 1)) -
@@ -852,7 +860,7 @@ FDK_INLINE FIXP_DBL fLog2_lookup(FIXP_DBL x_m, INT x_e) {
   return x_m;
 }
 
-#ifndef FUNCTION_fLog2E
+#ifndef FUNCTION_fLog2
 /**
  * \brief Calculate log(argument)/log(2) (logarithm with base 2). deprecated.
  * Use fLog2() instead.
@@ -865,9 +873,7 @@ FDK_INLINE FIXP_DBL fLog2_lookup(FIXP_DBL x_m, INT x_e) {
 FDK_INLINE FIXP_DBL fLog2(FIXP_DBL x_m, INT x_e, INT *result_e) {
   return fLog2_lookup(x_m, x_e, result_e);
 }
-#endif /* FUNCTION_fLog2E */
 
-#ifndef FUNCTION_fLog2
 /**
  * \brief calculate logarithm of base 2 of x_m * 2^(x_e)
  * \param x_m mantissa of the input value.

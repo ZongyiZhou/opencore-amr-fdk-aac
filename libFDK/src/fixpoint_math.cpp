@@ -917,6 +917,7 @@ UINT calLut(const UINT i) {
 static_assert(LOG2_LUT_SIZE_LOG2 > 6 && LOG2_LUT_SIZE_LOG2 < 10,
              "LOG2_LUT_SIZE_LOG2 must be in range [6,9]");
 
+LNK_SECTION_CONSTDATA
 const UINT log2_lut[LOG2_LUT_SIZE + 1] = {
   LUT7(0),
 #if LOG2_LUT_SIZE_LOG2 > 7
@@ -937,12 +938,17 @@ struct lutInitializer {
     log2_lut[LOG2_LUT_SIZE] = 0x80000000 + LOG2_ROUNDING_OFFSET;
   }
 };
+LNK_SECTION_INITCODE
 static const lutInitializer initializer;
 #endif
 
-const UCHAR fnorm_lut[32] = {
-  30, 29, 28, 28, 27, 27, 27, 27,
-  26, 26, 26, 26, 26, 26, 26, 26,
-  25, 25, 25, 25, 25, 25, 25, 25,
-  25, 25, 25, 25, 25, 25, 25, 25
+const UCHAR fnorm_lut[64] = {
+  25, 25, 25, 25, 25, 25, 25, 25, // -32 ~ -25
+  25, 25, 25, 25, 25, 25, 25, 25, // -24 ~ -17
+  26, 26, 26, 26, 26, 26, 26, 26, // -16 ~ -9
+  27, 27, 27, 27, 28, 28, 29, 30, // -8 ~ -1
+  30, 29, 28, 28, 27, 27, 27, 27, // 0 ~ 7
+  26, 26, 26, 26, 26, 26, 26, 26, // 8 ~ 15
+  25, 25, 25, 25, 25, 25, 25, 25, // 16 ~ 23
+  25, 25, 25, 25, 25, 25, 25, 25  // 24 ~ 31
 };
