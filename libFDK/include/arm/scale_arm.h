@@ -103,7 +103,7 @@ amm-info@iis.fraunhofer.de
 #if !defined(SCALE_ARM_H)
 #define SCALE_ARM_H
 
-#ifdef __ARM_ARCH_6__
+#if defined(__ARM_ARCH_5TE__) || defined(__ARM_ARCH_7M__)
 
 #if defined(__GNUC__) /* GCC Compiler */
 
@@ -146,7 +146,8 @@ inline INT shiftRightSat<0>(INT src) {
 inline FIXP_DBL scaleValueSaturate(const FIXP_DBL value,
                                    INT scalefactor /* in range -31 ... +31 */
 ) {
-  int32x2_t v{value, value}, s{scalefactor, scalefactor};
+  int32x2_t v, s;
+  v[0] = value; s[0] = scalefactor;
   v = vqrshl_s32(v, s);
   return v[0];
 }
@@ -157,27 +158,32 @@ inline FIXP_DBL scaleValueSaturate(const FIXP_DBL value,
 inline FIXP_DBL scaleValueSaturate(const FIXP_DBL value,
                                    INT scalefactor /* in range -31 ... +31 */
 ) {
-#ifdef __clang__
-  int r;
-  __asm__("sqrshl %0.4s, %1.4s, %2.4s" : "=w"(r) : "w"(value), "w"(scalefactor));
-  return r;
+  INT64 v = (UINT64)value << 32;
+  v >>= 32 - scalefactor;
+#ifdef __GNUC__
+  __asm__(
+    "cmp %x1, %x2;\n"
+    "csel %x0, %x1, %x2, le;\n"
+    "cmn %x1, %x2;\n"
+    "csneg %x0, %x1, %x2, ge"
+    : "=&r" (v)
+    : "r" (v), "r"(MAXVAL_DBL)
+  );
 #else
-  return vqrshls_s32(value, scalefactor);
+  if (v > MAXVAL_DBL)
+    v = MAXVAL_DBL;
+  if (v < -MAXVAL_DBL)
+    v = -MAXVAL_DBL;
 #endif
+  return v;
 }
 
 #endif /* arch selection */
 
 
 #define FUNCTION_scaleValueInPlace
-inline void scaleValueInPlace(FIXP_DBL *value, /*!< Value */
-                              INT scalefactor  /*!< Scalefactor */
-) {
-  if (scalefactor >= 0)
-    *value <<= scalefactor;
-  else
-    *value >>= -scalefactor;
-}
+#define scaleValueInPlace(value, scalefactor) \
+  *(value) = scaleValue(*(value), scalefactor)
 
 #define SATURATE_RIGHT_SHIFT(src, scale, dBits)                                \
   ((((LONG)(src) ^ ((LONG)(src) >> (DFRACT_BITS - 1))) >> (scale)) >           \
