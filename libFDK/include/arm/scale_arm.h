@@ -103,9 +103,7 @@ amm-info@iis.fraunhofer.de
 #if !defined(SCALE_ARM_H)
 #define SCALE_ARM_H
 
-#ifdef __ARM_ARCH_6__
-
-#if defined(__GNUC__) /* GCC Compiler */
+#if defined(__GNUC__) && (defined(__ARM_ARCH_5TE__) || defined(__ARM_ARCH_7M__))
 
 template<int scale>
 inline INT shiftRightSat(INT src) {
@@ -141,43 +139,27 @@ inline INT shiftRightSat<0>(INT src) {
 
 #endif /* compiler selection */
 
-#ifdef __ARM_ARCH_7_A__
+#if defined(__ARM_ARCH_7_A__) || defined(__ARM_ARCH_8__)
 #define FUNCTION_scaleValueSaturate
 inline FIXP_DBL scaleValueSaturate(const FIXP_DBL value,
                                    INT scalefactor /* in range -31 ... +31 */
 ) {
-  int32x2_t v{value, value}, s{scalefactor, scalefactor};
-  v = vqrshl_s32(v, s);
-  return v[0];
-}
-#endif // __ARM_ARCH_7_A__
-
-#elif defined(__ARM_ARCH_8__)
-#define FUNCTION_scaleValueSaturate
-inline FIXP_DBL scaleValueSaturate(const FIXP_DBL value,
-                                   INT scalefactor /* in range -31 ... +31 */
-) {
-#ifdef __clang__
-  int r;
-  __asm__("sqrshl %0.4s, %1.4s, %2.4s" : "=w"(r) : "w"(value), "w"(scalefactor));
-  return r;
+  if (scalefactor < -31) return 0;
+  int32x2_t v, s;
+#ifdef _MSC_VER
+  v.n64_i32[0] = value; s.n64_i32[0] = scalefactor;
+  return vqrshl_s32(v, s).n64_i32[0];
 #else
-  return vqrshls_s32(value, scalefactor);
+  v[0] = value; s[0] = scalefactor;
+  return vqrshl_s32(v, s)[0];
 #endif
 }
-
-#endif /* arch selection */
+#endif // (__ARM_ARCH_7_A__) || defined(__ARM_ARCH_8__)
 
 
 #define FUNCTION_scaleValueInPlace
-inline void scaleValueInPlace(FIXP_DBL *value, /*!< Value */
-                              INT scalefactor  /*!< Scalefactor */
-) {
-  if (scalefactor >= 0)
-    *value <<= scalefactor;
-  else
-    *value >>= -scalefactor;
-}
+#define scaleValueInPlace(value, scalefactor) \
+  *(value) = scaleValue(*(value), scalefactor)
 
 #define SATURATE_RIGHT_SHIFT(src, scale, dBits)                                \
   ((((LONG)(src) ^ ((LONG)(src) >> (DFRACT_BITS - 1))) >> (scale)) >           \
