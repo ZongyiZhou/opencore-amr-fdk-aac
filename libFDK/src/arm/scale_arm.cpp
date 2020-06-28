@@ -104,7 +104,36 @@ amm-info@iis.fraunhofer.de
 #ifndef __INCLUDE_SCALE_ARM__
 #define __INCLUDE_SCALE_ARM__
 
-#if !defined(FUNCTION_scaleValuesWithFactor_DBL)
+#if defined(__ARM_ARCH_8__) || defined(__ARM_ARCH_7_A__)
+
+#define FUNCTION_getScalefactorCplx_DBL
+SCALE_INLINE
+INT getScalefactorCplx(const FIXP_DBL *vectorRe, /*!< Pointer to real vector */
+                       const FIXP_DBL *vectorIm, /*!< Pointer to image vector */
+                       INT len) {                /*!< Length of input vector */
+  int32x4_t maxValRe = {32, 32, 32, 32},
+            maxValIm = {32, 32, 32, 32};
+  do {
+    int32x4_t tr = vclsq_s32(*(int32x4_t *)vectorRe),
+              ti = vclsq_s32(*(int32x4_t *)vectorIm);
+    vectorRe += 4;
+    vectorIm += 4;
+    maxValRe = vminq_s32(maxValRe, tr);
+    maxValIm = vminq_s32(maxValIm, ti);
+    len -= 4;
+  } while (len > 0);
+  maxValRe = vminq_s32(maxValRe, maxValIm);
+#ifdef __ARM_ARCH_8__
+  return vminvq_s32(maxValRe);
+#else
+  int32x2_t maxVal = vpmin_s32(vget_low_s32(maxValRe), vget_high_s32(maxValRe));
+  maxVal = vpmin_s32(maxVal, maxVal);
+  return maxVal[0];
+#endif
+}
+
+#endif // arch selection
+
 #define FUNCTION_scaleValuesWithFactor_DBL
 SCALE_INLINE
 void scaleValuesWithFactor(FIXP_DBL *vector, FIXP_DBL factor, INT len,
@@ -169,6 +198,5 @@ void scaleValuesWithFactor(FIXP_DBL *vector, FIXP_DBL factor, INT len,
     }
   }
 }
-#endif /* #if !defined(FUNCTION_scaleValuesWithFactor_DBL) */
 
 #endif /* #ifndef __INCLUDE_SCALE_ARM__ */
