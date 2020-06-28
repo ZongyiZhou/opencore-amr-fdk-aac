@@ -191,4 +191,32 @@ void scaleValuesWithFactor(FIXP_DBL *vector, FIXP_DBL factor, INT len,
 #endif  // __SSE4_1__
 }
 
+#define FUNCTION_getScalefactor_DBL
+SCALE_INLINE
+INT getScalefactor(const FIXP_DBL *vectorRe, /*!< Pointer to real vector */
+                   const FIXP_DBL *vectorIm, /*!< Pointer to image vector */
+                   INT len)                  /*!< Length of input vector */
+{
+  __m128i maxValRe = _mm_setzero_si128(), maxValIm = _mm_setzero_si128();
+
+  do {
+    __m128i tr = _mm_loadu_si128((__m128i *)vectorRe),
+            ti = _mm_loadu_si128((__m128i *)vectorIm);
+    vectorRe += 4;
+    vectorIm += 4;
+    tr = _mm_xor_si128(tr, _mm_srai_epi32(tr, 31));
+    ti = _mm_xor_si128(ti, _mm_srai_epi32(ti, 31));
+    maxValRe = _mm_or_si128(maxValRe, tr);
+    maxValIm = _mm_or_si128(maxValIm, ti);
+    len -= 4;
+  } while (len > 0);
+
+  __m128i maxVal = _mm_or_si128(maxValRe, maxValIm);
+  __m128i temp = _mm_shuffle_epi32(maxVal, 0xEE);
+  maxVal = _mm_or_si128(maxVal, temp);
+  temp = _mm_shuffle_epi32(maxVal, 1);
+  maxVal = _mm_or_si128(maxVal, temp);
+
+  return fixnormz_D(_mm_cvtsi128_si32(maxVal)) - 1;
+}
 #endif /* #ifndef __INCLUDE_SCALE_X86__ */
