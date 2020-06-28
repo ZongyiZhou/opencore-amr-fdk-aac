@@ -259,8 +259,7 @@ static void FDKsbrEnc_getEnergyFromCplxQmfData(
   /* Get max possible scaling of QMF data */
   scale = DFRACT_BITS;
   for (k = 0; k < numberCols; k++) {
-    scale = fixMin(scale, fixMin(getScalefactor(realValues[k], numberBands),
-                                 getScalefactor(imagValues[k], numberBands)));
+    scale = fixMin(scale, getScalefactor(realValues[k], imagValues[k], numberBands));
   }
 
   /* Tweak scaling stability for zero signal to non-zero signal transitions */
@@ -360,8 +359,7 @@ static void FDKsbrEnc_getEnergyFromCplxQmfDataFull(
   /* Get max possible scaling of QMF data */
   scale = DFRACT_BITS;
   for (k = 0; k < numberCols; k++) {
-    scale = fixMin(scale, fixMin(getScalefactor(realValues[k], numberBands),
-                                 getScalefactor(imagValues[k], numberBands)));
+    scale = fixMin(scale, getScalefactor(realValues[k], imagValues[k], numberBands));
   }
 
   /* Tweak scaling stability for zero signal to non-zero signal transitions */

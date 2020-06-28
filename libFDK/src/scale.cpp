@@ -551,8 +551,7 @@ INT getScalefactorPCM(const INT_PCM *vector, /*!< Pointer to input vector */
     vector += stride;
     maxVal |= (temp ^ (temp >> ((sizeof(INT_PCM) * 8) - 1)));
   }
-  return fixmax_I((INT)0, (INT)(fixnormz_D((INT)maxVal) - (INT)1 -
-                                (INT)(DFRACT_BITS - SAMPLE_BITS)));
+  return fixnormz_D((INT)maxVal) - 1 - (DFRACT_BITS - SAMPLE_BITS);
 }
 #endif
 
@@ -578,8 +577,7 @@ INT getScalefactorShort(const SHORT *vector, /*!< Pointer to input vector */
     maxVal |= (temp ^ (temp >> (SHORT_BITS - 1)));
   }
 
-  return fixmax_I((INT)0, (INT)(fixnormz_D((INT)maxVal) - (INT)1 -
-                                (INT)(DFRACT_BITS - SHORT_BITS)));
+  return fixnormz_D((INT)maxVal) - 1 - (DFRACT_BITS - SHORT_BITS);
 }
 #endif
 
@@ -600,35 +598,47 @@ INT getScalefactorShort(const SHORT *vector, /*!< Pointer to input vector */
  */
 #define FUNCTION_getScalefactor_DBL
 SCALE_INLINE
-INT getScalefactor(const FIXP_DBL *vector, /*!< Pointer to input vector */
-                   INT len)                /*!< Length of input vector */
+INT getScalefactor(const FIXP_DBL *vectorRe,  /*!< Pointer to real vector */
+                   const FIXP_DBL *vectorIm,  /*!< Pointer to image vector */
+                   INT len)                   /*!< Length of input vectors */
 {
   INT i;
   FIXP_DBL temp, maxVal = (FIXP_DBL)0;
 
   for (i = len; i != 0; i--) {
-    temp = (LONG)(*vector++);
-    maxVal |= (FIXP_DBL)((LONG)temp ^ (LONG)(temp >> (DFRACT_BITS - 1)));
+    temp = (LONG)(*vectorRe++);
+    maxVal |= (FIXP_DBL)(temp ^ (temp >> (DFRACT_BITS - 1)));
   }
 
-  return fixmax_I((INT)0, (INT)(fixnormz_D(maxVal) - 1));
+  for (i = len; i != 0; i--) {
+    temp = (LONG)(*vectorIm++);
+    maxVal |= (FIXP_DBL)(temp ^ (temp >> (DFRACT_BITS - 1)));
+  }
+
+  return fixnormz_D(maxVal) - 1;
 }
 #endif
 
 #ifndef FUNCTION_getScalefactor_SGL
 #define FUNCTION_getScalefactor_SGL
 SCALE_INLINE
-INT getScalefactor(const FIXP_SGL *vector, /*!< Pointer to input vector */
-                   INT len)                /*!< Length of input vector */
+INT getScalefactor(const FIXP_SGL *vectorRe,  /*!< Pointer to real vector */
+                   const FIXP_SGL *vectorIm,  /*!< Pointer to image vector */
+                   INT len)                   /*!< Length of input vector */
 {
   INT i;
   SHORT temp, maxVal = (FIXP_SGL)0;
 
   for (i = len; i != 0; i--) {
-    temp = (SHORT)(*vector++);
+    temp = (SHORT)(*vectorRe++);
     maxVal |= (temp ^ (temp >> (FRACT_BITS - 1)));
   }
 
-  return fixmax_I((INT)0, (INT)(fixnormz_S((FIXP_SGL)maxVal)) - 1);
+  for (i = len; i != 0; i--) {
+    temp = (SHORT)(*vectorIm++);
+    maxVal |= (temp ^ (temp >> (FRACT_BITS - 1)));
+  }
+
+  return (INT)fixnormz_S((FIXP_SGL)maxVal) - 1;
 }
 #endif

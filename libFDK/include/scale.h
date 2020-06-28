@@ -143,8 +143,8 @@ void scaleValuesSaturate(FIXP_SGL *dst, FIXP_SGL *src, INT len,
 void scaleValuesSaturate(INT_PCM *dst, INT_PCM *src, INT len, INT scalefactor);
 INT getScalefactorShort(const SHORT *vector, INT len);
 INT getScalefactorPCM(const INT_PCM *vector, INT len, INT stride);
-INT getScalefactor(const FIXP_DBL *vector, INT len);
-INT getScalefactor(const FIXP_SGL *vector, INT len);
+INT getScalefactor(const FIXP_DBL *vectorReal, const FIXP_DBL *vectorImage, INT len);
+INT getScalefactor(const FIXP_SGL *vectorReal, const FIXP_SGL *vectorImage, INT len);
 
 #ifndef FUNCTION_scaleValue
 /*!

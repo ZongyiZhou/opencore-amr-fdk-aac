@@ -215,9 +215,8 @@ void FDKsbrEnc_CalculateTonalityQuotas(
     blockLength = pBlockLength[0];
 
     while (k <= buffLen - blockLength) {
-      autoCorrScaling = fixMin(
-          getScalefactor(&realBuf[k - LPC_ORDER], LPC_ORDER + blockLength),
-          getScalefactor(&imagBuf[k - LPC_ORDER], LPC_ORDER + blockLength));
+      autoCorrScaling = getScalefactor(&realBuf[k - LPC_ORDER], &imagBuf[k - LPC_ORDER],
+                                       LPC_ORDER + blockLength);
       autoCorrScaling = fixMax(0, autoCorrScaling - 1);
 
       scaleValues(&realBuf[k - LPC_ORDER], LPC_ORDER + blockLength,
