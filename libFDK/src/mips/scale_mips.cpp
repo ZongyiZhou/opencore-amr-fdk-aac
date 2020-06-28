@@ -102,7 +102,6 @@ amm-info@iis.fraunhofer.de
 
 #if defined(__mips_dsp) && !defined(__mips16)
 
-#ifndef FUNCTION_getScalefactor_DBL
 #define FUNCTION_getScalefactor_DBL
 /*!
  *
@@ -126,8 +125,24 @@ INT getScalefactor(const FIXP_DBL *vector, /*!< Pointer to input vector */
     maxVal |= __builtin_mips_absq_s_w(*vector++);
   }
 
-  return fixMax((INT)0, (CntLeadingZeros(maxVal) - 1));
+  return CntLeadingZeros(maxValRe | maxValIm) - 1;
 }
-#endif
+
+#define FUNCTION_getScalefactorCplx_DBL
+SCALE_INLINE
+INT getScalefactorCplx(const FIXP_DBL *vectorRe, /*!< Pointer to real vector */
+                       const FIXP_DBL *vectorIm, /*!< Pointer to image vector */
+                       INT len)                  /*!< Length of input vector */
+{
+  INT i;
+  FIXP_DBL maxValRe = 0, maxValIm = 0;
+
+  for (i = len; i != 0; i--) {
+    maxValRe |= __builtin_mips_absq_s_w(*vectorRe++);
+    maxValIm |= __builtin_mips_absq_s_w(*vectorIm++);
+  }
+
+  return CntLeadingZeros(maxValRe | maxValIm) - 1;
+}
 
 #endif /*__mips_dsp */
