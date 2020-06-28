@@ -141,6 +141,8 @@ amm-info@iis.fraunhofer.de
 
 #ifdef __x86__
 #include "x86/qmf_x86.cpp"
+#elif defined(__arm__)
+#include "arm/qmf_arm.cpp"
 #endif
 
 #define QSSCALE (0)
