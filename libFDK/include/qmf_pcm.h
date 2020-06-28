@@ -105,6 +105,8 @@ amm-info@iis.fraunhofer.de
 
 #ifdef __x86__
 #include "x86/qmf_pcm_x86.h"
+#elif defined(__arm__)
+#include "arm/qmf_pcm_arm.h"
 #endif
 
 /*
