@@ -142,7 +142,7 @@ inline INT fixmul_DD(INT a, const INT b) {
     } i32;
   } r;
   r.i64 = __emul(a, b);
-  return r.i32.hi * 2;
+  return r.i32.hi * 2 + (r.i32.lo >> 31);
 }
 
 inline INT fixmuldiv2_DD(INT a, const INT b) {

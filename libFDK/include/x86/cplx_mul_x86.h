@@ -144,11 +144,51 @@ inline void cplxMult(FIXP_DBL *c_Re, FIXP_DBL *c_Im, const FIXP_DBL a_Re,
   *c_Re = (LONG)(((INT64)a_Re * b_Re - (INT64)a_Im * b_Im) >> 15);
   *c_Im = (LONG)(((INT64)a_Re * b_Im + (INT64)a_Im * b_Re) >> 15);
 }
-inline void cplxMult(FIXP_SGL *c_Re, FIXP_SGL *c_Im, const FIXP_SGL a_Re,
-                     const FIXP_SGL a_Im, const FIXP_SGL b_Re,
+
+#define FUNCTION_cplxMult_32x32X2
+inline void cplxMult(FIXP_DBL *c_Re, FIXP_DBL *c_Im, const FIXP_DBL a_Re,
+                     const FIXP_DBL a_Im, const FIXP_DBL b_Re,
+                     const FIXP_DBL b_Im) {
+  *c_Re = (LONG)(((INT64)a_Re * b_Re - (INT64)a_Im * b_Im) >> 31);
+  *c_Im = (LONG)(((INT64)a_Re * b_Im + (INT64)a_Im * b_Re) >> 31);
+}
+
+#elif defined(_MSC_VER) && _MSC_VER >= 1500
+#define FUNCTION_cplxMult_32x16X2
+inline void cplxMult(FIXP_DBL *c_Re, FIXP_DBL *c_Im, const FIXP_DBL a_Re,
+                     const FIXP_DBL a_Im, const FIXP_SGL b_Re,
                      const FIXP_SGL b_Im) {
-  *c_Re = (SHORT)((fMultDiv2(a_Re, b_Re) - fMultDiv2(a_Im, b_Im)) >> 15);
-  *c_Im = (SHORT)((fMultDiv2(a_Re, b_Im) + fMultDiv2(a_Im, b_Re)) >> 15);
+  UINT64 r = __emul(a_Re, b_Re) - __emul(a_Im, b_Im);
+  *c_Re = (LONG)(r >> 15);
+  r = __emul(a_Re, b_Im) + __emul(a_Im, b_Re);
+  *c_Im = (LONG)(r >> 15);
+}
+
+#define FUNCTION_cplxMult_32x32X2
+inline void cplxMult(FIXP_DBL *c_Re, FIXP_DBL *c_Im, const FIXP_DBL a_Re,
+                     const FIXP_DBL a_Im, const FIXP_DBL b_Re,
+                     const FIXP_DBL b_Im) {
+  union {
+    INT64 i64;
+    struct {
+      UINT lo;
+      INT hi;
+    } i32;
+  } r;
+
+  r.i64 = __emul(a_Re, b_Re) - __emul(a_Im, b_Im);
+  *c_Re = r.i32.hi * 2 + (r.i32.lo >> 31);
+  r.i64 = __emul(a_Re, b_Im) + __emul(a_Im, b_Re);
+  *c_Im = r.i32.hi * 2 + (r.i32.lo >> 31);
+}
+
+#else // GNUC
+#define FUNCTION_cplxMult_32x16X2
+inline void cplxMult(FIXP_DBL *c_Re, FIXP_DBL *c_Im, const FIXP_DBL a_Re,
+                     const FIXP_DBL a_Im, const FIXP_SGL b_Re,
+                     const FIXP_SGL b_Im) {
+  *c_Re = (LONG)(((INT64)a_Re * b_Re - (INT64)a_Im * b_Im) >> 15);
+  *c_Im = (LONG)(((INT64)a_Re * b_Im + (INT64)a_Im * b_Re) >> 15);
 }
 
 #define FUNCTION_cplxMult_32x32X2
