@@ -227,12 +227,6 @@ inline void cplxMult(FIXP_DBL *c_Re, FIXP_DBL *c_Im, const FIXP_DBL a_Re,
   *c_Re = fMult(a_Re, b_Re) - fMult(a_Im, b_Im);
   *c_Im = fMult(a_Re, b_Im) + fMult(a_Im, b_Re);
 }
-inline void cplxMult(FIXP_SGL *c_Re, FIXP_SGL *c_Im, const FIXP_SGL a_Re,
-                     const FIXP_SGL a_Im, const FIXP_SGL b_Re,
-                     const FIXP_SGL b_Im) {
-  *c_Re = (SHORT)((fMultDiv2(a_Re, b_Re) - fMultDiv2(a_Im, b_Im)) >> 15);
-  *c_Im = (SHORT)((fMultDiv2(a_Re, b_Im) + fMultDiv2(a_Im, b_Re)) >> 15);
-}
 #endif
 
 #if !defined(FUNCTION_cplxMult_32x16)
