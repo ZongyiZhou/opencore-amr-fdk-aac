@@ -315,9 +315,9 @@ typedef enum {
   C_AALLOC_MEM_L(name, type, num, sect)
 
 /** See \ref SYSLIB_MEMORY_MACROS for description. */
-#define C_AALLOC_SCRATCH_START(name, type, n)                 \
-  type _##name[(n) + (ALIGNMENT_DEFAULT + sizeof(type) - 1)]; \
-  type *name = (type *)ALIGN_PTR(_##name);                    \
+#define C_AALLOC_SCRATCH_START(name, type, n)               \
+  type _##name[(n) + ALIGNMENT_DEFAULT / sizeof(type) - 1]; \
+  type *name = (type *)ALIGN_PTR(_##name);                  \
   C_ALLOC_ALIGNED_REGISTER(name, (n) * sizeof(type));
 
 /** See \ref SYSLIB_MEMORY_MACROS for description. */
@@ -329,9 +329,9 @@ typedef enum {
 #define C_ALLOC_SCRATCH_END(name, type, n)
 
 /** See \ref SYSLIB_MEMORY_MACROS for description. */
-#define C_AALLOC_STACK_START(name, type, n)                   \
-  type _##name[(n) + (ALIGNMENT_DEFAULT + sizeof(type) - 1)]; \
-  type *name = (type *)ALIGN_PTR(_##name);                    \
+#define C_AALLOC_STACK_START(name, type, n)                 \
+  type _##name[(n) + ALIGNMENT_DEFAULT / sizeof(type) - 1]; \
+  type *name = (type *)ALIGN_PTR(_##name);                  \
   C_ALLOC_ALIGNED_REGISTER(name, (n) * sizeof(type));
 
 /** See \ref SYSLIB_MEMORY_MACROS for description. */
@@ -488,6 +488,32 @@ void FDKmemclear(void *memPtr, const UINT size);
  * documentation for details on how to use it.
  */
 void FDKmemset(void *memPtr, const INT value, const UINT size);
+
+/**
+ * Fast memcpy.
+ */
+inline void FDKmemcpyD(LONG *dst, const LONG *src, const UINT size) {
+  INT i;
+  INT64 *d = (INT64 *)dst, *s = (INT64 *)src;
+  for (i = size - 2; i >= 0; i -= 2) *d++ = *s++;
+  if (i & 1) *(LONG *)d = *(LONG *)s;
+}
+
+/**
+ * Fast memcpy among 3 locations. dst1 <- dst2 <- src.
+ */
+inline void FDKmemcpyD3(LONG *dst1, LONG *dst2, const LONG *src, const UINT size) {
+  INT i;
+  INT64 *d1 = (INT64 *)dst1, *d2 = (INT64 *)dst2, *s = (INT64 *)src;
+  for (i = size - 2; i >= 0; i -= 2) {
+    *d1++ = *d2;
+    *d2++ = *s++;
+  }
+  if (i & 1) {
+    *(LONG *)d1 = *(LONG *)d2;
+    *(LONG *)d2 = *(LONG *)s;
+  }
+}
 
 /* Compare function wrappers */
 INT FDKmemcmp(const void *s1, const void *s2, const UINT size);

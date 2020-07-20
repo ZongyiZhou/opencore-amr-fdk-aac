@@ -172,10 +172,8 @@ void FDKsbrEnc_CalculateTonalityQuotas(
    * Buffering of the quotaMatrix and the quotaMatrixTransp.
    *********************************************************/
   for (i = 0; i < move; i++) {
-    FDKmemcpy(quotaMatrix[i], quotaMatrix[i + noEstPerFrame],
-              noQmfChannels * sizeof(FIXP_DBL));
-    FDKmemcpy(signMatrix[i], signMatrix[i + noEstPerFrame],
-              noQmfChannels * sizeof(INT));
+    FDKmemcpyD(quotaMatrix[i], quotaMatrix[i + noEstPerFrame], noQmfChannels);
+    FDKmemcpyD(signMatrix[i], signMatrix[i + noEstPerFrame], noQmfChannels);
   }
 
   FDKmemmove(nrgVector, nrgVector + noEstPerFrame, move * sizeof(FIXP_DBL));

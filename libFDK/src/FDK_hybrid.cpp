@@ -386,33 +386,24 @@ INT FDKhybridAnalysisApply(HANDLE_FDK_ANA_HYB_FILTER hAnalysisHybFilter,
      */
     if (hAnalysisHybFilter->hfMode != 0) {
       /* HF delay compensation was applied outside. */
-      FDKmemcpy(
+      FDKmemcpyD(
           pHybridReal + hybOffset, &pQmfReal[nrQmfBandsLF],
-          (hAnalysisHybFilter->nrBands - nrQmfBandsLF) * sizeof(FIXP_DBL));
-      FDKmemcpy(
+          (hAnalysisHybFilter->nrBands - nrQmfBandsLF));
+      FDKmemcpyD(
           pHybridImag + hybOffset, &pQmfImag[nrQmfBandsLF],
-          (hAnalysisHybFilter->cplxBands - nrQmfBandsLF) * sizeof(FIXP_DBL));
+          (hAnalysisHybFilter->cplxBands - nrQmfBandsLF));
     } else {
       FDK_ASSERT(hAnalysisHybFilter->HFmemorySize != 0);
       /* HF delay compensation, filterlength/2. */
-      FDKmemcpy(
+      FDKmemcpyD3(
           pHybridReal + hybOffset,
           hAnalysisHybFilter->bufferHFReal[hAnalysisHybFilter->bufferHFpos],
-          (hAnalysisHybFilter->nrBands - nrQmfBandsLF) * sizeof(FIXP_DBL));
-      FDKmemcpy(
+          pQmfReal + nrQmfBandsLF, hAnalysisHybFilter->nrBands - nrQmfBandsLF);
+      FDKmemcpyD3(
           pHybridImag + hybOffset,
           hAnalysisHybFilter->bufferHFImag[hAnalysisHybFilter->bufferHFpos],
-          (hAnalysisHybFilter->cplxBands - nrQmfBandsLF) * sizeof(FIXP_DBL));
-
-      FDKmemcpy(
-          hAnalysisHybFilter->bufferHFReal[hAnalysisHybFilter->bufferHFpos],
-          &pQmfReal[nrQmfBandsLF],
-          (hAnalysisHybFilter->nrBands - nrQmfBandsLF) * sizeof(FIXP_DBL));
-      FDKmemcpy(
-          hAnalysisHybFilter->bufferHFImag[hAnalysisHybFilter->bufferHFpos],
-          &pQmfImag[nrQmfBandsLF],
-          (hAnalysisHybFilter->cplxBands - nrQmfBandsLF) * sizeof(FIXP_DBL));
-
+          pQmfImag + nrQmfBandsLF,
+          hAnalysisHybFilter->cplxBands - nrQmfBandsLF);
       if (++hAnalysisHybFilter->bufferHFpos >=
           hAnalysisHybFilter->pSetup->filterDelay)
         hAnalysisHybFilter->bufferHFpos = 0;
@@ -496,11 +487,10 @@ void FDKhybridSynthesisApply(HANDLE_FDK_SYN_HYB_FILTER hSynthesisHybFilter,
     /*
      * HF buffer.
      */
-    FDKmemcpy(&pQmfReal[nrQmfBandsLF], &pHybridReal[hybOffset],
-              (hSynthesisHybFilter->nrBands - nrQmfBandsLF) * sizeof(FIXP_DBL));
-    FDKmemcpy(
-        &pQmfImag[nrQmfBandsLF], &pHybridImag[hybOffset],
-        (hSynthesisHybFilter->cplxBands - nrQmfBandsLF) * sizeof(FIXP_DBL));
+    FDKmemcpyD(&pQmfReal[nrQmfBandsLF], &pHybridReal[hybOffset],
+               hSynthesisHybFilter->nrBands - nrQmfBandsLF);
+    FDKmemcpyD(&pQmfImag[nrQmfBandsLF], &pHybridImag[hybOffset],
+               hSynthesisHybFilter->cplxBands - nrQmfBandsLF);
   }
 
   return;
