@@ -315,9 +315,9 @@ typedef enum {
   C_AALLOC_MEM_L(name, type, num, sect)
 
 /** See \ref SYSLIB_MEMORY_MACROS for description. */
-#define C_AALLOC_SCRATCH_START(name, type, n)                 \
-  type _##name[(n) + (ALIGNMENT_DEFAULT + sizeof(type) - 1)]; \
-  type *name = (type *)ALIGN_PTR(_##name);                    \
+#define C_AALLOC_SCRATCH_START(name, type, n)               \
+  type _##name[(n) + ALIGNMENT_DEFAULT / sizeof(type) - 1]; \
+  type *name = (type *)ALIGN_PTR(_##name);                  \
   C_ALLOC_ALIGNED_REGISTER(name, (n) * sizeof(type));
 
 /** See \ref SYSLIB_MEMORY_MACROS for description. */
@@ -329,9 +329,9 @@ typedef enum {
 #define C_ALLOC_SCRATCH_END(name, type, n)
 
 /** See \ref SYSLIB_MEMORY_MACROS for description. */
-#define C_AALLOC_STACK_START(name, type, n)                   \
-  type _##name[(n) + (ALIGNMENT_DEFAULT + sizeof(type) - 1)]; \
-  type *name = (type *)ALIGN_PTR(_##name);                    \
+#define C_AALLOC_STACK_START(name, type, n)                 \
+  type _##name[(n) + ALIGNMENT_DEFAULT / sizeof(type) - 1]; \
+  type *name = (type *)ALIGN_PTR(_##name);                  \
   C_ALLOC_ALIGNED_REGISTER(name, (n) * sizeof(type));
 
 /** See \ref SYSLIB_MEMORY_MACROS for description. */
@@ -579,6 +579,26 @@ void FDKprintDisclaimer(void);
 
 #ifdef __cplusplus
 }
+
+/**
+ * Fast memcpy.
+ */
+template <class T>
+inline void FDKmemcpyD(T *dst, const T *src, const UINT size) {
+  for (INT i = size - 1; i >= 0; i--) *dst++ = *src++;
+}
+
+/**
+ * Fast memcpy among 3 locations. dst1 <- dst2 <- src.
+ */
+template <class T>
+inline void FDKmemcpyD3(T *dst1, T *dst2, const T *src, const UINT size) {
+  for (INT i = size - 1; i >= 0; i--) {
+    *dst1++ = *dst2;
+    *dst2++ = *src++;
+  }
+}
+
 #endif
 
 #endif /* GENERICSTDS_H */
