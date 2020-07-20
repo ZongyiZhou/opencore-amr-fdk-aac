@@ -289,6 +289,18 @@ bail:
   return error;
 }
 
+// a <- b <- c <- a
+inline void memRotD3(FIXP_DBL *m0, FIXP_DBL *m1, FIXP_DBL *m2, INT n) {
+  INT64 *a = (INT64 *)m0, *b = (INT64 *)m1, *c = (INT64 *)m2;
+  n >>= 1;
+  for (INT i = 0; i < n; i++) {
+    INT64 t = a[i];
+    a[i] = b[i];
+    b[i] = c[i];
+    c[i] = t;
+  }
+}
+
 static FDK_PSENC_ERROR DownmixPSQmfData(
     HANDLE_PARAMETRIC_STEREO hParametricStereo,
     HANDLE_QMF_FILTER_BANK sbrSynthQmf, FIXP_DBL **RESTRICT mixRealQmfData,
@@ -401,28 +413,10 @@ static FDK_PSENC_ERROR DownmixPSQmfData(
 
       INT scale, i, j, slotOffset;
 
-      FIXP_DBL tmp[2][64];
 
       for (i = 0; i < noQmfSlots2; i++) {
-        FDKmemcpy(tmp[0], hParametricStereo->qmfDelayLines[0][i],
-                  noQmfBands * sizeof(FIXP_DBL));
-        FDKmemcpy(tmp[1], hParametricStereo->qmfDelayLines[1][i],
-                  noQmfBands * sizeof(FIXP_DBL));
-
-        FDKmemcpy(hParametricStereo->qmfDelayLines[0][i],
-                  mixRealQmfData[i + noQmfSlots2],
-                  noQmfBands * sizeof(FIXP_DBL));
-        FDKmemcpy(hParametricStereo->qmfDelayLines[1][i],
-                  mixImagQmfData[i + noQmfSlots2],
-                  noQmfBands * sizeof(FIXP_DBL));
-
-        FDKmemcpy(mixRealQmfData[i + noQmfSlots2], mixRealQmfData[i],
-                  noQmfBands * sizeof(FIXP_DBL));
-        FDKmemcpy(mixImagQmfData[i + noQmfSlots2], mixImagQmfData[i],
-                  noQmfBands * sizeof(FIXP_DBL));
-
-        FDKmemcpy(mixRealQmfData[i], tmp[0], noQmfBands * sizeof(FIXP_DBL));
-        FDKmemcpy(mixImagQmfData[i], tmp[1], noQmfBands * sizeof(FIXP_DBL));
+        memRotD3(hParametricStereo->qmfDelayLines[0][i], mixRealQmfData[i + noQmfSlots2], mixRealQmfData[i], noQmfBands);
+        memRotD3(hParametricStereo->qmfDelayLines[1][i], mixImagQmfData[i + noQmfSlots2], mixImagQmfData[i], noQmfBands);
       }
 
       if (hParametricStereo->qmfDelayScale > *qmfScale) {
