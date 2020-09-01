@@ -115,7 +115,7 @@ amm-info@iis.fraunhofer.de
 
 inline void FDKsbrEnc_addFIXP_DBL(const FIXP_DBL *X, const FIXP_DBL *Y,
                                   FIXP_DBL *Z, INT n) {
-  for (INT i = 0; i < n; i++) Z[i] = (X[i] >> 1) + (Y[i] >> 1);
+  for (INT i = 0; i < n; i++) Z[i] = (X[i] & Y[i]) + ((X[i] ^ Y[i]) >> 1);
 }
 
 #define LOG10_2_10 3.01029995664f /* 10.0f*log10(2.f) */
@@ -880,8 +880,8 @@ FDK_PSENC_ERROR FDKsbrEnc_PSEncode(
           FIXP_DBL r_real = (hybridData[col][1][0][subband]) << scale;
           FIXP_DBL r_imag = (hybridData[col][1][1][subband]) << scale;
 
-          pwrL_env_bin += (fPow2Div2(l_real) + fPow2Div2(l_imag)) >> bScale;
-          pwrR_env_bin += (fPow2Div2(r_real) + fPow2Div2(r_imag)) >> bScale;
+          pwrL_env_bin += fixsumpow2div2_D(l_real, l_imag) >> bScale;
+          pwrR_env_bin += fixsumpow2div2_D(r_real, r_imag) >> bScale;
           pwrCr_env_bin +=
               (fMultDiv2(l_real, r_real) + fMultDiv2(l_imag, r_imag)) >> bScale;
           pwrCi_env_bin +=
