@@ -297,11 +297,16 @@ static void FDKsbrEnc_getEnergyFromCplxQmfData(
         /* Scale QMF Values and Calc Energy average of both timeslots */
         tr0 <<= scale;
         ti0 <<= scale;
-        energy = fPow2AddDiv2(fPow2Div2(tr0), ti0) >> 1;
-
         tr1 <<= scale;
         ti1 <<= scale;
-        energy += fPow2AddDiv2(fPow2Div2(tr1), ti1) >> 1;
+#ifdef __LP64__
+        UINT64 sum = (INT64)tr0 * tr0 + (INT64)ti0 * ti0 + (INT64)tr1 * tr1 +
+                     (INT64)ti1 * ti1;
+        energy = sum >> 33;
+#else
+        energy = fSumPow2Div2(tr0, ti0) + fSumPow2Div2(tr1, ti1);
+        energy = (UINT)energy >> 1;
+#endif
 
         /* Write timeslot pair energy to scratch */
         *nrgValues++ = energy;
