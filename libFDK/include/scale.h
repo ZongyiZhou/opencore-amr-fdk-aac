@@ -164,7 +164,7 @@ inline FIXP_DBL scaleValue(const FIXP_DBL value, /*!< Value */
   else
     return (value >> (-scalefactor));
 #else
-  INT64 r = (INT64)value << (64 - DFRACT_BITS);
+  INT64 r = (UINT64)value << (64 - DFRACT_BITS);
   return (FIXP_DBL)(r >> (64 - DFRACT_BITS - scalefactor));
 #endif
 }
