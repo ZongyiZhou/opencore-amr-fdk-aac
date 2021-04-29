@@ -103,7 +103,7 @@ amm-info@iis.fraunhofer.de
 #if !defined(SCRAMBLE_ARM_H)
 #define SCRAMBLE_ARM_H
 
-#if defined(__GNUC__) && (defined(__ARM_ARCH_6__) || defined(__ARM_ARCH_8__))
+#if defined(__GNUC__) && (defined(__ARM_ARCH_6__) || defined(__ARM_ARCH_7M__) || defined(__ARM_ARCH_8__))
 
 #define FUNCTION_bitreverse
 inline UINT bitreverse(UINT x, UINT clz) {
