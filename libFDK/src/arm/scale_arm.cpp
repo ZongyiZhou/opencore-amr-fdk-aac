@@ -105,6 +105,80 @@ amm-info@iis.fraunhofer.de
 #define __INCLUDE_SCALE_ARM__
 
 #if defined(__ARM_ARCH_8__) || defined(__ARM_ARCH_7_A__)
+#define FUNCTION_scaleValuesSaturate_DBL
+void scaleValuesSaturate(FIXP_DBL *vector, INT len, INT scalefactor) {
+  /* Return if scalefactor is Zero */
+  if (scalefactor == 0) return;
+
+  int32x4_t s = vdupq_n_s32(scalefactor);
+  int32x4_t *v = (int32x4_t *)vector;
+  for (int i = len >> 2; i; i--) {
+    *v = vqrshlq_s32(*v, s);
+    v++;
+  }
+  int32x4_t x = *v;
+  switch (len & 3) {
+  case 3:
+    x = vqrshlq_s32(x, s);
+    ((int32x2_t*)v)[0] = vget_low_s32(x);
+    v[0][2] = x[2];
+    break;
+  case 2:
+    ((int32x2_t*)v)[0] = vqrshl_s32(vget_low_s32(x), vget_low_s32(s));
+    break;
+  case 1:
+#ifdef __ARM_ARCH_7_A__
+    v[0][0] = vqrshl_s32(vget_low_s32(x), vget_low_s32(s))[0];
+#else
+    v[0][0] = vqrshls_s32(x[0], s[0]);
+#endif
+  }
+}
+
+#define FUNCTION_scaleValuesWithFactor_DBL
+SCALE_INLINE
+void scaleValuesWithFactor(FIXP_DBL *vector, FIXP_DBL factor, INT len, INT scalefactor) {
+#ifdef __ARM_ARCH_7_A__
+  int64x2_t s = (int64x2_t)vdupq_n_s32(scalefactor) >> 32;
+#else
+  int64x2_t s = vdupq_n_s64(scalefactor);
+#endif
+  int32x2_t f = {factor, 0};
+  int32x2_t *v = (int32x2_t *)vector;
+  for (int i = len >> 2; i; i--) {
+#ifdef __ARM_ARCH_7_A__
+    int64x2_t y0 = vmull_lane_s32(v[0], f, 0),
+              y1 = vmull_lane_s32(v[1], f, 0);
+#else
+    int32x4_t x = *(int32x4_t*)v;
+    int64x2_t y0 = vmull_lane_s32(vget_low_s32(x), f, 0),
+              y1 = vmull_high_lane_s32(x, f, 0);
+#endif
+    y0 = vqrshlq_s64(y0, s);
+    y1 = vqrshlq_s64(y1, s);
+    v[0] = vqrshrn_n_s64(y0, 32);
+    v[1] = vqrshrn_n_s64(y1, 32);
+    v += 2;
+  }
+  int64x2_t y;
+  switch (len & 3) {
+  case 3:
+    y = vmull_lane_s32(v[1], f, 0);
+    y = vcombine_s64(vqrshl_s64(vget_low_s64(y), vget_low_s64(s)),
+                     vget_high_s64(y));
+    v[1][0] = vqrshrn_n_s64(y, 32)[0];
+  case 2:
+    y = vmull_lane_s32(v[0], f, 0);
+    y = vqrshlq_s64(y, s);
+    v[0] = vqrshrn_n_s64(y, 32);
+    break;
+  case 1:
+    y = vmull_lane_s32(v[0], f, 0);
+    y = vcombine_s64(vqrshl_s64(vget_low_s64(y), vget_low_s64(s)),
+                     vget_high_s64(y));
+    v[0][0] = vqrshrn_n_s64(y, 32)[0];
+  }
+}
 
 #define FUNCTION_getScalefactor_DBL
 SCALE_INLINE
@@ -132,8 +206,7 @@ INT getScalefactor(const FIXP_DBL *vectorRe, /*!< Pointer to real vector */
 #endif
 }
 
-#endif // arch selection
-
+#else
 #define FUNCTION_scaleValuesWithFactor_DBL
 SCALE_INLINE
 void scaleValuesWithFactor(FIXP_DBL *vector, FIXP_DBL factor, INT len,
@@ -198,5 +271,7 @@ void scaleValuesWithFactor(FIXP_DBL *vector, FIXP_DBL factor, INT len,
     }
   }
 }
+
+#endif // arch selection
 
 #endif /* #ifndef __INCLUDE_SCALE_ARM__ */
