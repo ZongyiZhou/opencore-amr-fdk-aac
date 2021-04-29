@@ -110,30 +110,18 @@ amm-info@iis.fraunhofer.de
 #ifdef __ARM_ARCH_8__
 #if defined(__GNUC__)
 #define FUNCTION_fixmadddiv2_DD
-#ifdef FUNCTION_fixmadddiv2_DD
 inline FIXP_DBL fixmadddiv2_DD(FIXP_DBL x, const FIXP_DBL a, const FIXP_DBL b) {
   INT64 result;
-  asm("smull  %x0,  %w1,  %w2;    \n"
-      "asr    %x0,  %x0,  #32;    \n"
-      "add    %w0, %w3,  %w0;    \n"
-      : "=&r"(result)
-      : "r"(a), "r"(b), "r"(x));
-  return (INT)result;
+  asm("smull %x0, %w1, %w2" : "=r"(result) : "r"(a), "r"(b));
+  return x + (INT)(result >> 32);
 }
-#endif /* #ifdef FUNCTION_fixmadddiv2_DD */
 
 #define FUNCTION_fixmsubdiv2_DD
-#ifdef FUNCTION_fixmsubdiv2_DD
 inline FIXP_DBL fixmsubdiv2_DD(FIXP_DBL x, const FIXP_DBL a, const FIXP_DBL b) {
   INT64 result;
-  asm("smull  %x0,  %w1, %w2;     \n"
-      "asr    %x0,  %x0,  #32;     \n"
-      "sub    %w0, %w3, %w0;     \n"
-      : "=&r"(result)
-      : "r"(a), "r"(b), "r"(x));
-  return (INT)result;
+  asm("smull %x0, %w1, %w2" : "=r"(result) : "r"(a), "r"(b));
+  return x - (INT)(result >> 32);
 }
-#endif /* #ifdef FUNCTION_fixmsubdiv2_DD */
 #endif /* toolchain */
 
 #define FUNCTION_fixsumpow2div2_D
@@ -143,81 +131,63 @@ inline FIXP_DBL fixsumpow2div2_D(const FIXP_DBL a, const FIXP_DBL b) {
 }
 
 #elif defined(__GNUC__)
-#if defined(__ARM_ARCH_6__)
+#if defined(__ARM_ARCH_6__) || defined(__ARM_ARCH_7M__)
 
 #define FUNCTION_fixmadddiv2_DD
-#ifdef FUNCTION_fixmadddiv2_DD
 inline FIXP_DBL fixmadddiv2_DD(FIXP_DBL x, const FIXP_DBL a, const FIXP_DBL b) {
   INT result;
-  asm("smmla %0, %1, %2, %3;\n" : "=r"(result) : "r"(a), "r"(b), "r"(x));
+  asm("smmla %0, %1, %2, %3" : "=r"(result) : "r"(a), "r"(b), "r"(x));
   return result;
 }
-#endif /* #ifdef FUNCTION_fixmadddiv2_DD */
 
 #define FUNCTION_fixmsubdiv2_DD
-#ifdef FUNCTION_fixmsubdiv2_DD
 inline FIXP_DBL fixmsubdiv2_DD(FIXP_DBL x, const FIXP_DBL a, const FIXP_DBL b) {
   INT result;
-  asm("smmls %0, %1, %2, %3;\n" : "=r"(result) : "r"(a), "r"(b), "r"(x));
+  asm("smmls %0, %1, %2, %3" : "=r"(result) : "r"(a), "r"(b), "r"(x));
   return result;
 }
-#endif /* #ifdef FUNCTION_fixmsubdiv2_DD */
 
 #else
 #define FUNCTION_fixmadddiv2_DD
-#ifdef FUNCTION_fixmadddiv2_DD
 inline FIXP_DBL fixmadddiv2_DD(FIXP_DBL x, const FIXP_DBL a, const FIXP_DBL b) {
   INT discard = 0;
   INT result = x;
-  asm("smlal %0, %1, %2, %3;\n" : "+r"(discard), "+r"(result) : "r"(a), "r"(b));
+  asm("smlal %0, %1, %2, %3" : "+r"(discard), "+r"(result) : "r"(a), "r"(b));
   return result;
 }
-#endif /* FUNCTION_fixmadddiv2_DD */
 #endif /* __ARM_ARCH_6__ */
 
-#if defined(__ARM_ARCH_5TE__) || defined(__ARM_ARCH_6__)
+#if defined(__ARM_ARCH_5TE__) || defined(__ARM_ARCH_7M__)
 
 #define FUNCTION_fixmadddiv2_DS
-#ifdef FUNCTION_fixmadddiv2_DS
 inline FIXP_DBL fixmadddiv2_DS(FIXP_DBL x, const FIXP_DBL a, const FIXP_SGL b) {
   INT result;
-  asm("smlawb %0, %1, %2, %3 " : "=r"(result) : "r"(a), "r"(b), "r"(x));
+  asm("smlawb %0, %1, %2, %3" : "=r"(result) : "r"(a), "r"(b), "r"(x));
   return result;
 }
-#endif /* #ifdef FUNCTION_fixmadddiv2_DS */
 
-#endif /* defined(__ARM_ARCH_5TE__) || defined(__ARM_ARCH_6__) */
+#endif /* defined(__ARM_ARCH_5TE__) || defined(__ARM_ARCH_7M__) */
 #endif /* toolchain */
 
 #define FUNCTION_fixmadddiv2BitExact_DD
-#ifdef FUNCTION_fixmadddiv2BitExact_DD
 #define fixmadddiv2BitExact_DD(a, b, c) fixmadddiv2_DD(a, b, c)
-#endif /* #ifdef FUNCTION_fixmadddiv2BitExact_DD */
 
 #define FUNCTION_fixmsubdiv2BitExact_DD
-#ifdef FUNCTION_fixmsubdiv2BitExact_DD
 inline FIXP_DBL fixmsubdiv2BitExact_DD(FIXP_DBL x, const FIXP_DBL a,
                                        const FIXP_DBL b) {
   return x - fixmuldiv2BitExact_DD(a, b);
 }
-#endif /* #ifdef FUNCTION_fixmsubdiv2BitExact_DD */
 
 #define FUNCTION_fixmadddiv2BitExact_DS
-#ifdef FUNCTION_fixmadddiv2BitExact_DS
 #define fixmadddiv2BitExact_DS(a, b, c) fixmadddiv2_DS(a, b, c)
-#endif /* #ifdef FUNCTION_fixmadddiv2BitExact_DS */
 
 #define FUNCTION_fixmsubdiv2BitExact_DS
-#ifdef FUNCTION_fixmsubdiv2BitExact_DS
 inline FIXP_DBL fixmsubdiv2BitExact_DS(FIXP_DBL x, const FIXP_DBL a,
                                        const FIXP_SGL b) {
   return x - fixmuldiv2BitExact_DS(a, b);
 }
-#endif /* #ifdef FUNCTION_fixmsubdiv2BitExact_DS */
 
 /* #############################################################################
  */
-  /* #############################################################################
-   */
 
 #endif /* !defined(FIXMADD_ARM_H) */

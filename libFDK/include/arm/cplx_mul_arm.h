@@ -103,76 +103,66 @@ amm-info@iis.fraunhofer.de
 #if !defined(CPLX_MUL_ARM_H)
 #define CPLX_MUL_ARM_H
 
-#if defined(__arm__) && defined(__GNUC__)
-
-#if defined(__ARM_ARCH_5TE__) || defined(__ARM_ARCH_6__) || \
-    defined(__ARM_ARCH_8__)
-#define FUNCTION_cplxMultDiv2_32x16
-#define FUNCTION_cplxMultDiv2_32x16X2
-#endif
+#if defined(__ARM_ARCH_8__) || defined(__GNUC__)
 
 #define FUNCTION_cplxMultDiv2_32x32X2
-#ifdef FUNCTION_cplxMultDiv2_32x32X2
 inline void cplxMultDiv2(FIXP_DBL *c_Re, FIXP_DBL *c_Im, const FIXP_DBL a_Re,
                          const FIXP_DBL a_Im, const FIXP_DBL b_Re,
                          const FIXP_DBL b_Im) {
   LONG tmp1, tmp2;
 
 #ifdef __ARM_ARCH_8__
-  asm("smull  %x0, %w2, %w4;       \n" /* tmp1  = a_Re * b_Re */
-      "smull  %x1, %w2, %w5;       \n" /* tmp2  = a_Re * b_Im */
-      "smsubl %x0, %w3, %w5, %x0;  \n" /* tmp1 -= a_Im * b_Im */
-      "smaddl %x1, %w3, %w4, %x1;  \n" /* tmp2 += a_Im * b_Re */
-      "asr    %x0, %x0,  #32       \n"
-      "asr    %x1, %x1,  #32       \n"
-      : "=&r"(tmp1), "=&r"(tmp2)
-      : "r"(a_Re), "r"(a_Im), "r"(b_Re), "r"(b_Im));
-#elif defined(__ARM_ARCH_6__)
-  asm("smmul %0, %2, %4;\n"     /* tmp1  = a_Re * b_Re */
-      "smmul %1, %2, %5;\n"     /* tmp2  = a_Re * b_Im */
-      "smmls %0, %3, %5, %0;\n" /* tmp1 -= a_Im * b_Im */
-      "smmla %1, %3, %4, %1;\n" /* tmp2 += a_Im * b_Re */
-      : "=&r"(tmp1), "=&r"(tmp2)
-      : "r"(a_Re), "r"(a_Im), "r"(b_Re), "r"(b_Im));
+  tmp1 = (LONG)(((INT64)a_Re * b_Re - (INT64)a_Im * b_Im) >> 32);
+  tmp2 = (LONG)(((INT64)a_Re * b_Im + (INT64)a_Im * b_Re) >> 32);
+#elif defined(__ARM_ARCH_6__) || defined(__ARM_ARCH_7M__)
+  asm("smmul %0, %2, %3;\n"     /* tmp1  = a_Re * b_Re */
+      "smmul %1, %2, %4;\n"     /* tmp2  = a_Re * b_Im */
+      : "=&r"(tmp1), "=r"(tmp2)
+      : "r"(a_Re), "r"(b_Re), "r"(b_Im));
+  asm("smmls %0, %2, %4, %0;\n" /* tmp1 -= a_Im * b_Im */
+      "smmla %1, %2, %3, %1;\n" /* tmp2 += a_Im * b_Re */
+      : "+r"(tmp1), "+r"(tmp2)
+      : "r"(a_Im), "r"(b_Re), "r"(b_Im));
 #else
-  LONG discard;
-  asm("smull %2, %0, %7, %6;\n" /* tmp1  = -a_Im * b_Im */
-      "smull %2, %1, %3, %6;\n" /* tmp2  =  a_Re * b_Im */
-      "smlal %2, %0, %3, %5;\n" /* tmp1 +=  a_Re * b_Re */
-      "smlal %2, %1, %4, %5;\n" /* tmp2 +=  a_Im * b_Re */
-      : "=&r"(tmp1), "=&r"(tmp2), "=&r"(discard)
-      : "r"(a_Re), "r"(a_Im), "r"(b_Re), "r"(b_Im), "r"(-a_Im));
+  UINT low1, low2;
+  asm("smull %3, %1, %5, %6;\n" /* tmp2  =  a_Im * b_Re */
+      "smull %2, %0, %4, %6;\n" /* tmp1  =  a_Re * b_Re */
+      : "=r"(tmp1), "=&r"(tmp2), "=&r"(low1), "=&r"(low2)
+      : "r"(a_Re), "r"(a_Im), "r"(b_Re));
+  asm("smlal %3, %1, %4, %6;\n" /* tmp2 +=  a_Re * b_Im */
+      "smlal %2, %0, %5, %6;\n" /* tmp1 += -a_Im * b_Im */
+      : "+r"(tmp1), "+r"(tmp2), "+r"(low1), "+r"(low2)
+      : "r"(a_Re), "r"(-a_Im), "r"(b_Im));
 #endif
   *c_Re = tmp1;
   *c_Im = tmp2;
 }
-#endif /* FUNCTION_cplxMultDiv2_32x32X2 */
 
-#ifdef FUNCTION_cplxMultDiv2_32x16X2
+#if defined(__ARM_ARCH_5TE__) || defined(__ARM_ARCH_7M__) || defined(__ARM_ARCH_8__)
+#define FUNCTION_cplxMultDiv2_32x16X2
 inline void cplxMultDiv2(FIXP_DBL *c_Re, FIXP_DBL *c_Im, const FIXP_DBL a_Re,
                          const FIXP_DBL a_Im, const FIXP_SGL b_Re,
                          const FIXP_SGL b_Im) {
 #ifdef __ARM_ARCH_8__
   *c_Re = (LONG)(((INT64)a_Re * b_Re - (INT64)a_Im * b_Im) >> 16);
   *c_Im = (LONG)(((INT64)a_Re * b_Im + (INT64)a_Im * b_Re) >> 16);
-#else
+#elif defined(__ARM_ARCH_6__) || defined(__ARM_ARCH_7M__)
   LONG tmp1, tmp2;
 
-  asm("smulwb %0, %3, %5;\n"     /* tmp1 = a_Im * b_Im */
-      "smulwb %1, %2, %5;\n"     /* tmp2 =  a_Re * b_Im */
-      "rsb %0,%0,#0;\n"          /* tmp1 = -a_Im * b_Im */
-      "smlawb %0, %2, %4, %0;\n" /* tmp1 =  a_Re * b_Re - a_Im * b_Im */
-      "smlawb %1, %3, %4, %1;\n" /* tmp2 =  a_Im * b_Re + a_Re * b_Im */
-      : "=&r"(tmp1), "=&r"(tmp2)
-      : "r"(a_Re), "r"(a_Im), "r"(b_Re), "r"(b_Im));
-
+  asm("smulwb %1, %3, %4;\n"     /* tmp2 =  a_Im * b_Re */
+      "smulwb %0, %2, %4;\n"     /* tmp1 =  a_Re * b_Re */
+      : "=r"(tmp1), "=&r"(tmp2)
+      : "r"(a_Re), "r"(a_Im), "r"((INT)b_Re));
+  asm("smlawb %1, %2, %4, %1;\n" /* tmp2 =  a_Im * b_Re + a_Re * b_Im */
+      "smlawb %0, %3, %4, %0;\n" /* tmp1 =  a_Re * b_Re - a_Im * b_Im */
+      : "+r"(tmp1), "+r"(tmp2)
+      : "r"(a_Re), "r"(-a_Im), "r"((INT)b_Im));
   *c_Re = tmp1;
   *c_Im = tmp2;
 #endif
 }
-#endif /* FUNCTION_cplxMultDiv2_32x16X2 */
 
-#if defined(FUNCTION_cplxMultDiv2_32x16)
+#define FUNCTION_cplxMultDiv2_32x16
 inline void cplxMultDiv2(FIXP_DBL *c_Re, FIXP_DBL *c_Im, const FIXP_DBL a_Re,
                          const FIXP_DBL a_Im, FIXP_SPK wpk) {
 #ifdef __ARM_ARCH_8__
@@ -180,19 +170,63 @@ inline void cplxMultDiv2(FIXP_DBL *c_Re, FIXP_DBL *c_Im, const FIXP_DBL a_Re,
 #else
   LONG tmp1, tmp2;
   const LONG w = wpk.w;
-  asm("smulwt %0, %3, %4;\n"
-      "smulwt %1, %2, %4;\n"
-      "rsb %0, %0, #0;\n"
-      "smlawb %0, %2, %4, %0;\n"
-      "smlawb %1, %3, %4, %1;\n"
-      : "=&r"(tmp1), "=&r"(tmp2)
-      : "r"(a_Re), "r"(a_Im), "r"(w));
+  asm("smulwt %1, %2, %2;\n" // tmp2 =  a_Re * b_Im
+      "smulwb %0, %2, %3;\n" // tmp1 =  a_Re * b_Re
+      : "=r"(tmp1), "=&r"(tmp2)
+      : "r"(a_Re), "r"(w));
+  asm("smlawb %1, %2, %4, %1;\n" // tmp2 +=  a_Im * b_Re
+      "smlawt %0, %3, %4, %0;\n" // tmp1 += -a_Im * b_Im
+      : "+r"(tmp1), "+r"(tmp2)
+      : "r"(a_Im), "r"(-a_Im), "r"(w));
   *c_Re = tmp1;
   *c_Im = tmp2;
 #endif
 }
-#endif /* FUNCTION_cplxMultDiv2_32x16 */
+#endif /* defined(__ARM_ARCH_5TE__) || defined(__ARM_ARCH_8__) */
 
+#define FUNCTION_cplxMult_32x32X2
+inline void cplxMult(FIXP_DBL *c_Re, FIXP_DBL *c_Im, const FIXP_DBL a_Re,
+                     const FIXP_DBL a_Im, const FIXP_DBL b_Re, const FIXP_DBL b_Im) {
+#ifdef __ARM_ARCH_8__
+  *c_Re = (LONG)(((INT64)a_Re * b_Re - (INT64)a_Im * b_Im) >> 31);
+  *c_Im = (LONG)(((INT64)a_Re * b_Im + (INT64)a_Im * b_Re) >> 31);
+#else
+  LONG tmp1, tmp2;
+  UINT low1, low2;
+  asm("smull %3, %1, %5, %6;\n" /* tmp2  =  a_Im * b_Re */
+      "smull %2, %0, %4, %6;\n" /* tmp1  =  a_Re * b_Re */
+      : "=r"(tmp1), "=&r"(tmp2), "=&r"(low1), "=&r"(low2)
+      : "r"(a_Re), "r"(a_Im), "r"(b_Re));
+  asm("smlal %3, %1, %4, %6;\n" /* tmp2 +=  a_Re * b_Im */
+      "smlal %2, %0, %5, %6;\n" /* tmp1 += -a_Im * b_Im */
+      : "+r"(tmp1), "+r"(tmp2), "+r"(low1), "+r"(low2)
+      : "r"(a_Re), "r"(-a_Im), "r"(b_Im));
+  *c_Re = (tmp1 * 2) | (low1 >> 31);
+  *c_Im = (tmp2 * 2) | (low2 >> 31);
 #endif
+}
+
+#define FUNCTION_cplxMult_32x16X2
+inline void cplxMult(FIXP_DBL *c_Re, FIXP_DBL *c_Im, const FIXP_DBL a_Re,
+                     const FIXP_DBL a_Im, const FIXP_SGL b_Re, const FIXP_SGL b_Im) {
+#ifdef __ARM_ARCH_8__
+  *c_Re = (LONG)(((INT64)a_Re * b_Re - (INT64)a_Im * b_Im) >> 15);
+  *c_Im = (LONG)(((INT64)a_Re * b_Im + (INT64)a_Im * b_Re) >> 15);
+#else
+  LONG tmp1, tmp2;
+  UINT low1, low2;
+  asm("smull %3, %1, %5, %6;\n" /* tmp2  =  a_Im * b_Re */
+      "smull %2, %0, %4, %6;\n" /* tmp1  =  a_Re * b_Re */
+      : "=r"(tmp1), "=&r"(tmp2), "=&r"(low1), "=&r"(low2)
+      : "r"(a_Re), "r"(a_Im), "r"((INT)b_Re));
+  asm("smlal %3, %1, %4, %6;\n" /* tmp2 +=  a_Re * b_Im */
+      "smlal %2, %0, %5, %6;\n" /* tmp1 += -a_Im * b_Im */
+      : "+r"(tmp1), "+r"(tmp2), "+r"(low1), "+r"(low2)
+      : "r"(a_Re), "r"(-a_Im), "r"((INT)b_Im));
+  *c_Re = (tmp1 << 17) | (low1 >> 15);
+  *c_Im = (tmp2 << 17) | (low2 >> 15);
+#endif
+}
+#endif // arch selection
 
 #endif /* !defined(CPLX_MUL_ARM_H) */

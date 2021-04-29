@@ -103,35 +103,36 @@ amm-info@iis.fraunhofer.de
 #if !defined(FIXMUL_ARM_H)
 #define FIXMUL_ARM_H
 
-#if defined(__GNUC__) && defined(__arm__)
-/* ARM with GNU compiler */
-
-#define FUNCTION_fixmuldiv2_DD
-#define FUNCTION_fixmul_DD
-
 #ifdef __ARM_ARCH_8__
+#define FUNCTION_fixmuldiv2_DD
 #define fixmuldiv2_DD(a, b) fixmuldiv2BitExact_DD(a, b)
 #define FUNCTION_fixmuldiv2_SD
 #define fixmuldiv2_SD(a, b) fixmuldiv2BitExact_SD(a, b)
 #define FUNCTION_fixmuldiv2_DS
 #define fixmuldiv2_DS(a, b) fixmuldiv2BitExact_DS(a, b)
+#define FUNCTION_fixmul_DD
 #define fixmul_DD(a, b) fixmulBitExact_DD(a, b)
+#define FUNCTION_fixmul_SD
+#define fixmul_SD(a, b) fixmulBitExact_SD(a, b)
+#define FUNCTION_fixmul_DS
+#define fixmul_DS(a, b) fixmulBitExact_DS(a, b)
 
-#else // 32-bit ARM
+#elif defined(__GNUC__) // 32-bit ARM with GNU compiler */
+#define FUNCTION_fixmuldiv2_DD
 inline INT fixmuldiv2_DD(const INT a, const INT b) {
   INT result;
-#if defined(__ARM_ARCH_6__) || defined(__TARGET_ARCH_7E_M)
+#if defined(__ARM_ARCH_6__) || defined(__ARM_ARCH_7M__)
   __asm__("smmul %0, %1, %2" : "=r"(result) : "r"(a), "r"(b));
 #else
   INT discard;
   __asm__("smull %0, %1, %2, %3"
-          : "=&r"(discard), "=r"(result)
+          : "=r"(discard), "=r"(result)
           : "r"(a), "r"(b));
 #endif
   return result;
 }
 
-#if defined(__ARM_ARCH_5TE__) || defined(__ARM_ARCH_6__)
+#ifdef __ARM_ARCH_5TE__
 #define FUNCTION_fixmuldiv2_SD
 inline INT fixmuldiv2_SD(const SHORT a, const INT b) {
   INT result;
@@ -140,16 +141,25 @@ inline INT fixmuldiv2_SD(const SHORT a, const INT b) {
 }
 #endif
 
+#define FUNCTION_fixmul_DD
 inline INT fixmul_DD(const INT a, const INT b) {
   INT hi;
   UINT lo;
   __asm__("smull %0, %1, %2, %3"
-          : "=&r"(lo), "=r"(hi)
+          : "=r"(lo), "=r"(hi)
           : "r"(a), "r"(b));
-  return (hi * 2) + (lo >> 31);
+  return (hi * 2) | (lo >> 31);
 }
-#endif /* __ARM_ARCH_8__ */
 
-#endif /* defined(__GNUC__) && defined(__arm__) */
+#define FUNCTION_fixmul_SD
+inline INT fixmul_SD(const SHORT a, const INT b) {
+  INT hi;
+  UINT lo;
+  __asm__("smull %0, %1, %2, %3"
+          : "=r"(lo), "=r"(hi)
+          : "r"((INT)a), "r"(b));
+  return (hi << 17) | (lo >> 15);
+}
+#endif /* defined(__GNUC__) */
 
 #endif /* !defined(FIXMUL_ARM_H) */
