@@ -159,16 +159,16 @@ inline FIXP_DBL invSqrtNorm2(FIXP_DBL op_m, INT *result_e) {
 
 #define FUNCTION_invFixp
 inline FIXP_DBL invFixp(FIXP_DBL op) {
-  if ((op == (FIXP_DBL)0) || (op == (FIXP_DBL)1)) {
-    return 0x7fffffff;
+  if (op == 0 || op == -1) {
+    return MINVAL_DBL;
   }
-  return (1 << 31) / -op;
+  return -(MINVAL_DBL / op);
 }
 
 inline FIXP_DBL invFixp(FIXP_DBL op_m, int *op_e) {
   if (op_m == 0) {
     *op_e = 31;
-    return ((LONG)0x7fffffff);
+    return MAXVAL_DBL;
   }
 #ifdef __GNUC__
   INT cls;

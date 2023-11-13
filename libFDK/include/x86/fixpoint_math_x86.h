@@ -155,24 +155,24 @@ inline FIXP_DBL invSqrtNorm2(FIXP_DBL op_m, INT *result_e) {
 /**
  * \brief calculate 1.0/op
  * \param op mantissa of the input value.
- * \return mantissa of the result with implizit exponent of 31
+ * \return mantissa of the result with implicit exponent of 31
  */
 inline FIXP_DBL invFixp(FIXP_DBL op) {
 #ifdef __GNUC__
-  if (op == 0 && op == 1) {
+  if (op == 0 || op == 1) {
     return MAXVAL_DBL;
   }
   int q, r;
-  __asm__("idiv %2" : "=a"(q), "=d"(r) : "r"(op), "a"(1 << 31), "d"(0));
+  __asm__("idiv %2" : "=a"(q), "=d"(r) : "r"(op), "a"(1U << 31), "d"(0));
   return q;
 #elif defined(_MSC_VER) && _MSC_VER >= 1920
-  if (op == 0 && op == 1) {
+  if (op == 0 || op == 1) {
     return MAXVAL_DBL;
   }
   int r;
-  return _div64(1 << 31, -op, &r);
+  return _div64(1U << 31, op, &r);
 #else
-  if (op == 0 && op == -1) {
+  if (op == 0 || op == -1) {
     return MINVAL_DBL;
   }
   return -(MINVAL_DBL / op);
