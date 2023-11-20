@@ -7,14 +7,35 @@ jobs:
     steps:
       - name: Checkout sources
         uses: actions/checkout@v4
-      - name: Build
+      - name: Build default
         run: |
           ./autogen.sh
           ./configure --enable-example
           make -j$(nproc) CFLAGS="-g -O2 -Werror" CXXFLAGS="-g -O2 -Werror"
-      - name: Run tests
+      - name: Run tests default
         run: |
           sudo apt-get install --no-install-recommends ffmpeg
+          ./test/run-test.sh
+      - name: Build SSE4.1
+        run: |
+          make clean
+          make -j$(nproc) CFLAGS="-g -Ofast -march=nehalem" CXXFLAGS="-g -Ofast -march=nehalem"
+      - name: Run tests SSE4.1
+        run: |
+          ./test/run-test.sh
+      - name: Build AVX
+        run: |
+          make clean
+          make -j$(nproc) CFLAGS="-g -Ofast -march=sandybridge" CXXFLAGS="-g -Ofast -march=sandybridge"
+      - name: Run tests AVX
+        run: |
+          ./test/run-test.sh
+      - name: Build AVX2
+        run: |
+          make clean
+          make -j$(nproc) CFLAGS="-g -Ofast -march=haswell" CXXFLAGS="-g -Ofast -march=haswell"
+      - name: Run tests AVX2
+        run: |
           ./test/run-test.sh
 
   linux-cmake:
@@ -22,15 +43,26 @@ jobs:
     steps:
       - name: Checkout sources
         uses: actions/checkout@v4
-      - name: Build
+      - name: Build amd64
         run: |
           cmake . -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_PROGRAMS=YES -DCMAKE_C_FLAGS="-Werror" -DCMAKE_CXX_FLAGS="-Werror -Wno-stringop-overflow"
-          cmake --build build
-      - name: Run tests
+          cmake --build build -j4
+      - name: Run tests amd64
         run: |
           sudo apt-get install --no-install-recommends ffmpeg
           cd build
           ../test/run-test.sh
+          find . ! -name '*.wav' -delete
+      - name: Build x86 SSE2
+        run: |
+          sudo apt install gcc-multilib g++-multilib
+          cmake . -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_PROGRAMS=YES -DCMAKE_C_FLAGS="-m32 -march=k8 -ffast-math -Werror" -DCMAKE_CXX_FLAGS="-m32 -march=k8 -ffast-math -Werror -Wno-stringop-overflow"
+          cmake --build build -j4
+      - name: Run tests x86 SSE2
+        run: |
+          cd build
+          ../test/run-test.sh
+          find . ! -name '*.wav' -delete
 
   linux-sanitizers-gcc-autotools:
     runs-on: ubuntu-latest
