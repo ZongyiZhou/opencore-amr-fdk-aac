@@ -105,7 +105,7 @@ amm-info@iis.fraunhofer.de
     "Do not compile this file separately. It is included on demand from fft_rad2.cpp"
 #endif
 
-#ifndef FUNCTION_dit_fft
+#ifdef __SSE2__
 #define FUNCTION_dit_fft
 
 #ifndef _mm_loadu_si64
@@ -487,4 +487,4 @@ void dit_fft_impl(FIXP_DBL *x, const INT ldn, const FIXP_STP *trigdata,
   }
 }
 
-#endif /* ifndef FUNCTION_dit_fft */
+#endif // __SSE2__

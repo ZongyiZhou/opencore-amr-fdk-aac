@@ -180,12 +180,19 @@ typedef __int64 INT64;
 typedef unsigned __int64 UINT64;
 
 #ifdef __AVX__
+#define __SSE__
+#define __SSE2__
 #define __SSE4_1__ 1
 #define __SSE4_2__ 1
 #ifdef __AVX2__
 #define __FMA__ 1
 #endif
+#elif _M_IX86_FP > 1
+#define __SSE__
+#if _M_IX86_FP == 2
+#define __SSE2__
 #endif
+#endif // _M_IX86_FP > 1
 
 #else
 typedef long long INT64;

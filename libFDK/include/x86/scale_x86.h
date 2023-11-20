@@ -103,6 +103,7 @@ amm-info@iis.fraunhofer.de
 #if !defined(SCALE_X86_H)
 #define SCALE_X86_H
 
+#ifdef __SSE2__
 #define FUNCTION_scaleValueSaturate
 inline FIXP_DBL scaleValueSaturate(const FIXP_DBL value,
                                    INT scalefactor /* in range -31 ... +31 */
@@ -125,8 +126,9 @@ inline FIXP_DBL scaleValueSaturate(const FIXP_DBL value,
   return (s & r) < 0 ? MAXVAL_DBL : r;
 #endif
 }
+#endif
 
-#if SAMPLE_BITS == 16
+#if SAMPLE_BITS == 16 && defined(__SSE2__)
 inline SHORT sat_int32_int16_sse2(INT value) {
   __m128i x = _mm_cvtsi32_si128(value);
   x = _mm_packs_epi32(x, x);

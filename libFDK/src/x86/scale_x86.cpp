@@ -100,9 +100,8 @@ amm-info@iis.fraunhofer.de
 
 *******************************************************************************/
 
-/* prevent multiple inclusion with re-definitions */
-#ifndef __INCLUDE_SCALE_X86__
-#define __INCLUDE_SCALE_X86__
+/* Do not compile this file separately. It is included on demand from scale.cpp */
+#ifdef __SSE2__
 
 #ifdef __GNUC__
 inline __m128d CVTDQ2PD(const void *x) {
@@ -246,4 +245,4 @@ INT getScalefactorCplx(const FIXP_DBL *vectorRe, /*!< Pointer to real vector */
 
   return fixnormz_D(_mm_cvtsi128_si32(maxVal)) - 1;
 }
-#endif /* #ifndef __INCLUDE_SCALE_X86__ */
+#endif // __SSE2__

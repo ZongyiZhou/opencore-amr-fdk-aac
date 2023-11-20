@@ -104,7 +104,7 @@ amm-info@iis.fraunhofer.de
 #ifndef __INCLUDE_QMF_X86__
 #define __INCLUDE_QMF_X86__
 
-#if defined(QMF_COEFF_16BIT) && QAS_BITS == 16
+#if defined(QMF_COEFF_16BIT) && QAS_BITS == 16 && defined(__SSE2__)
 #ifndef _mm_loadu_si64
 #define _mm_loadu_si64(p) _mm_loadl_epi64((__m128i const *)(p))
 #endif
@@ -346,6 +346,6 @@ static void qmfAnaPrototypeFirSlot(
 #endif // __LP64__
 }
 #define FUNCTION_qmfAnaPrototypeFirSlot
-#endif // defined(QMF_COEFF_16BIT) && QAS_BITS == 16
+#endif // defined(QMF_COEFF_16BIT) && QAS_BITS == 16 && defined(__SSE2__)
 
 #endif /* #ifndef __INCLUDE_QMF_X86__ */

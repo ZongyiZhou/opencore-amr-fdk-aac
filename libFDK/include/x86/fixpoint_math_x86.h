@@ -103,22 +103,33 @@ amm-info@iis.fraunhofer.de
 #if !defined(FIXPOINT_MATH_X86_H)
 #define FIXPOINT_MATH_X86_H
 
-#if defined(_MSC_VER) && (_MSC_VER > 1200)
+#ifdef _MSC_VER
 #include <intrin.h>
 #include <immintrin.h>
 
+#if _MSC_VER >= 1800
+#ifdef __SSE__
 inline int lrintf_fast(const float value) {
   return _mm_cvt_ss2si(_mm_set_ss(value));
 }
 #define lrintf(v) lrintf_fast(v)
 #define lroundf(v) lrintf_fast(v)
 
+#ifdef __SSE2__
 inline int lrint_fast(const double value) {
   return _mm_cvtsd_si32(_mm_set_sd(value));
 }
 #define lrint(v) lrint_fast(v)
 #define lround(v) lrint_fast(v)
-#endif  // _MSC_VER
+#endif // __SSE2__
+#endif // __SSE__
+#else // _MSC_VER >= 1800
+#define lrintf(v) (INT)(v)
+#define lroundf(v) (INT)(v)
+#define lrint(v) (INT)(v)
+#define lround(v) (INT)(v)
+#endif  // _MSC_VER >= 1800
+#endif //_MSC_VER
 
 #define FUNCTION_sqrtFixp
 inline FIXP_DBL sqrtFixp(const FIXP_DBL op) {
@@ -336,6 +347,7 @@ inline FIXP_DBL fMultNorm(FIXP_DBL f1, FIXP_DBL f2, INT *result_e) {
 
 inline FIXP_DBL fMultNorm(FIXP_DBL f1_m, INT f1_e, FIXP_DBL f2_m, INT f2_e,
                           INT result_e) {
+#ifdef __SSE2__
   if ((f1_m | f2_m) == 0) return 0;
   double product = (double)f1_m * f2_m;
 
@@ -346,6 +358,13 @@ inline FIXP_DBL fMultNorm(FIXP_DBL f1_m, INT f1_e, FIXP_DBL f2_m, INT f2_e,
   INT s = ~(f1_m ^ f2_m | scalefactor);
   INT r = _mm_cvtsd_si32(d);
   return (s & r) < 0 ? MAXVAL_DBL : r;
+#else
+  FIXP_DBL m;
+  INT e;
+  m = fMultNorm(f1_m, f2_m, &e);
+  m = scaleValueSaturate(m, e + f1_e + f2_e - result_e);
+  return m;
+#endif
 }
 
 #define FUNCTION_llRightShift32
