@@ -114,13 +114,13 @@ amm-info@iis.fraunhofer.de
     diff = wb - wa;                       \
     sum = wb + wa;                        \
   }
-#define SUMDIFF_PIFOURTH16(diff, sum, a, b)       \
-  {                                               \
-    FIXP_SGL wa, wb;                              \
-    wa = FX_DBL2FX_SGL(fMultDiv2(a, W_PiFOURTH)); \
-    wb = FX_DBL2FX_SGL(fMultDiv2(b, W_PiFOURTH)); \
-    diff = wb - wa;                               \
-    sum = wb + wa;                                \
+#define SUMDIFF_PIFOURTH16(diff, sum, a, b) \
+  {                                         \
+    FIXP_SGL wa, wb;                        \
+    wa = fMultDiv2(a, W_PiFOURTH);          \
+    wb = fMultDiv2(b, W_PiFOURTH);          \
+    diff = FX_DBL2FX_SGL(wb - wa);          \
+    sum = FX_DBL2FX_SGL(wb + wa);           \
   }
 #endif
 
@@ -203,15 +203,15 @@ static inline void fft3(FIXP_DBL *RESTRICT pDat) {
 
   /* real part */
   r1 = pDat[2] + pDat[4];
-  r2 = fMultDiv2((pDat[2] - pDat[4]), C31);
   pD = pDat[0] >> 1;
+  r2 = fMultDiv2((pDat[2] - pDat[4]), C31);
   pDat[0] = pD + (r1 >> 1);
   r1 = pD - (r1 >> 2);
 
   /* imaginary part */
   s1 = pDat[3] + pDat[5];
-  s2 = fMultDiv2((pDat[3] - pDat[5]), C31);
   pD = pDat[1] >> 1;
+  s2 = fMultDiv2((pDat[3] - pDat[5]), C31);
   pDat[1] = pD + (s1 >> 1);
   s1 = pD - (s1 >> 2);
 
@@ -710,20 +710,6 @@ static inline void fft15(FIXP_DBL *pInput) {
 }
 #endif /* FUNCTION_fft15 */
 
-/*
- Select shift placement.
- Some processors like ARM may shift "for free" in combination with an addition
- or substraction, but others don't so either combining shift with +/- or reduce
- the total amount or shift operations is optimal
- */
-#if !defined(__arm__)
-#define SHIFT_A >> 1
-#define SHIFT_B
-#else
-#define SHIFT_A
-#define SHIFT_B >> 1
-#endif
-
 #ifndef FUNCTION_fft_16 /* we check, if fft_16 (FIXP_DBL *) is not yet defined \
                          */
 
@@ -743,22 +729,22 @@ inline void fft_16(FIXP_DBL *RESTRICT x) {
   FIXP_DBL vi2, ui2;
   FIXP_DBL vi3, ui3;
 
-  vr = (x[0] >> 1) + (x[16] >> 1);       /* Re A + Re B */
-  ur = (x[1] >> 1) + (x[17] >> 1);       /* Im A + Im B */
-  vi = (x[8] SHIFT_A) + (x[24] SHIFT_A); /* Re C + Re D */
-  ui = (x[9] SHIFT_A) + (x[25] SHIFT_A); /* Im C + Im D */
-  x[0] = vr + (vi SHIFT_B);              /* Re A' = ReA + ReB +ReC + ReD */
-  x[1] = ur + (ui SHIFT_B);              /* Im A' = sum of imag values */
+  vr = (x[0] >> 1) + (x[16] >> 1); /* Re A + Re B */
+  ur = (x[1] >> 1) + (x[17] >> 1); /* Im A + Im B */
+  vi = (x[8] >> 1) + (x[24] >> 1); /* Re C + Re D */
+  ui = (x[9] >> 1) + (x[25] >> 1); /* Im C + Im D */
+  x[0] = vr + (vi);                /* Re A' = ReA + ReB +ReC + ReD */
+  x[1] = ur + (ui);                /* Im A' = sum of imag values */
 
   vr2 = (x[4] >> 1) + (x[20] >> 1); /* Re A + Re B */
   ur2 = (x[5] >> 1) + (x[21] >> 1); /* Im A + Im B */
 
-  x[4] = vr - (vi SHIFT_B); /* Re C' = -(ReC+ReD) + (ReA+ReB) */
-  x[5] = ur - (ui SHIFT_B); /* Im C' = -Im C -Im D +Im A +Im B */
-  vr -= x[16];              /* Re A - Re B */
-  vi = (vi SHIFT_B)-x[24];  /* Re C - Re D */
-  ur -= x[17];              /* Im A - Im B */
-  ui = (ui SHIFT_B)-x[25];  /* Im C - Im D */
+  x[4] = vr - (vi); /* Re C' = -(ReC+ReD) + (ReA+ReB) */
+  x[5] = ur - (ui); /* Im C' = -Im C -Im D +Im A +Im B */
+  vr -= x[16];      /* Re A - Re B */
+  vi = (vi)-x[24];  /* Re C - Re D */
+  ur -= x[17];      /* Im A - Im B */
+  ui = (ui)-x[25];  /* Im C - Im D */
 
   vr3 = (x[2] >> 1) + (x[18] >> 1); /* Re A + Re B */
   ur3 = (x[3] >> 1) + (x[19] >> 1); /* Im A + Im B */
@@ -772,56 +758,56 @@ inline void fft_16(FIXP_DBL *RESTRICT x) {
   x[6] = vr - ui; /* Re D' = -Im C + Im D + Re A - Re B */
   x[7] = vi + ur; /* Im D'= Re C - Re D + Im A - Im B */
 
-  vi2 = (x[12] SHIFT_A) + (x[28] SHIFT_A); /* Re C + Re D */
-  ui2 = (x[13] SHIFT_A) + (x[29] SHIFT_A); /* Im C + Im D */
-  x[8] = vr2 + (vi2 SHIFT_B);              /* Re A' = ReA + ReB +ReC + ReD */
-  x[9] = ur2 + (ui2 SHIFT_B);              /* Im A' = sum of imag values */
-  x[12] = vr2 - (vi2 SHIFT_B);             /* Re C' = -(ReC+ReD) + (ReA+ReB) */
-  x[13] = ur2 - (ui2 SHIFT_B);             /* Im C' = -Im C -Im D +Im A +Im B */
-  vr2 -= x[20];                            /* Re A - Re B */
-  ur2 -= x[21];                            /* Im A - Im B */
-  vi2 = (vi2 SHIFT_B)-x[28];               /* Re C - Re D */
-  ui2 = (ui2 SHIFT_B)-x[29];               /* Im C - Im D */
+  vi2 = (x[12] >> 1) + (x[28] >> 1); /* Re C + Re D */
+  ui2 = (x[13] >> 1) + (x[29] >> 1); /* Im C + Im D */
+  x[8] = vr2 + (vi2);                /* Re A' = ReA + ReB +ReC + ReD */
+  x[9] = ur2 + (ui2);                /* Im A' = sum of imag values */
+  x[12] = vr2 - (vi2);               /* Re C' = -(ReC+ReD) + (ReA+ReB) */
+  x[13] = ur2 - (ui2);               /* Im C' = -Im C -Im D +Im A +Im B */
+  vr2 -= x[20];                      /* Re A - Re B */
+  ur2 -= x[21];                      /* Im A - Im B */
+  vi2 = (vi2)-x[28];                 /* Re C - Re D */
+  ui2 = (ui2)-x[29];                 /* Im C - Im D */
 
-  vi = (x[10] SHIFT_A) + (x[26] SHIFT_A); /* Re C + Re D */
-  ui = (x[11] SHIFT_A) + (x[27] SHIFT_A); /* Im C + Im D */
+  vi = (x[10] >> 1) + (x[26] >> 1); /* Re C + Re D */
+  ui = (x[11] >> 1) + (x[27] >> 1); /* Im C + Im D */
 
   x[10] = ui2 + vr2; /* Re B' = Im C - Im D  + Re A - Re B */
   x[11] = ur2 - vi2; /* Im B'= -Re C + Re D + Im A - Im B */
 
-  vi3 = (x[14] SHIFT_A) + (x[30] SHIFT_A); /* Re C + Re D */
-  ui3 = (x[15] SHIFT_A) + (x[31] SHIFT_A); /* Im C + Im D */
+  vi3 = (x[14] >> 1) + (x[30] >> 1); /* Re C + Re D */
+  ui3 = (x[15] >> 1) + (x[31] >> 1); /* Im C + Im D */
 
   x[14] = vr2 - ui2; /* Re D' = -Im C + Im D + Re A - Re B */
   x[15] = vi2 + ur2; /* Im D'= Re C - Re D + Im A - Im B */
 
-  x[16] = vr3 + (vi SHIFT_B); /* Re A' = ReA + ReB +ReC + ReD */
-  x[17] = ur3 + (ui SHIFT_B); /* Im A' = sum of imag values */
-  x[20] = vr3 - (vi SHIFT_B); /* Re C' = -(ReC+ReD) + (ReA+ReB) */
-  x[21] = ur3 - (ui SHIFT_B); /* Im C' = -Im C -Im D +Im A +Im B */
-  vr3 -= x[18];               /* Re A - Re B */
-  ur3 -= x[19];               /* Im A - Im B */
-  vi = (vi SHIFT_B)-x[26];    /* Re C - Re D */
-  ui = (ui SHIFT_B)-x[27];    /* Im C - Im D */
-  x[18] = ui + vr3;           /* Re B' = Im C - Im D  + Re A - Re B */
-  x[19] = ur3 - vi;           /* Im B'= -Re C + Re D + Im A - Im B */
+  x[16] = vr3 + (vi); /* Re A' = ReA + ReB +ReC + ReD */
+  x[17] = ur3 + (ui); /* Im A' = sum of imag values */
+  x[20] = vr3 - (vi); /* Re C' = -(ReC+ReD) + (ReA+ReB) */
+  x[21] = ur3 - (ui); /* Im C' = -Im C -Im D +Im A +Im B */
+  vr3 -= x[18];       /* Re A - Re B */
+  ur3 -= x[19];       /* Im A - Im B */
+  vi = (vi)-x[26];    /* Re C - Re D */
+  ui = (ui)-x[27];    /* Im C - Im D */
+  x[18] = ui + vr3;   /* Re B' = Im C - Im D  + Re A - Re B */
+  x[19] = ur3 - vi;   /* Im B'= -Re C + Re D + Im A - Im B */
 
-  x[24] = vr4 + (vi3 SHIFT_B); /* Re A' = ReA + ReB +ReC + ReD */
-  x[28] = vr4 - (vi3 SHIFT_B); /* Re C' = -(ReC+ReD) + (ReA+ReB) */
-  x[25] = ur4 + (ui3 SHIFT_B); /* Im A' = sum of imag values */
-  x[29] = ur4 - (ui3 SHIFT_B); /* Im C' = -Im C -Im D +Im A +Im B */
-  vr4 -= x[22];                /* Re A - Re B */
-  ur4 -= x[23];                /* Im A - Im B */
+  x[24] = vr4 + (vi3); /* Re A' = ReA + ReB +ReC + ReD */
+  x[28] = vr4 - (vi3); /* Re C' = -(ReC+ReD) + (ReA+ReB) */
+  x[25] = ur4 + (ui3); /* Im A' = sum of imag values */
+  x[29] = ur4 - (ui3); /* Im C' = -Im C -Im D +Im A +Im B */
+  vr4 -= x[22];        /* Re A - Re B */
+  ur4 -= x[23];        /* Im A - Im B */
 
   x[22] = vr3 - ui; /* Re D' = -Im C + Im D + Re A - Re B */
   x[23] = vi + ur3; /* Im D'= Re C - Re D + Im A - Im B */
 
-  vi3 = (vi3 SHIFT_B)-x[30]; /* Re C - Re D */
-  ui3 = (ui3 SHIFT_B)-x[31]; /* Im C - Im D */
-  x[26] = ui3 + vr4;         /* Re B' = Im C - Im D  + Re A - Re B */
-  x[30] = vr4 - ui3;         /* Re D' = -Im C + Im D + Re A - Re B */
-  x[27] = ur4 - vi3;         /* Im B'= -Re C + Re D + Im A - Im B */
-  x[31] = vi3 + ur4;         /* Im D'= Re C - Re D + Im A - Im B */
+  vi3 = (vi3)-x[30]; /* Re C - Re D */
+  ui3 = (ui3)-x[31]; /* Im C - Im D */
+  x[26] = ui3 + vr4; /* Re B' = Im C - Im D  + Re A - Re B */
+  x[30] = vr4 - ui3; /* Re D' = -Im C + Im D + Re A - Re B */
+  x[27] = ur4 - vi3; /* Im B'= -Re C + Re D + Im A - Im B */
+  x[31] = vi3 + ur4; /* Im D'= Re C - Re D + Im A - Im B */
 
   // xt1 =  0
   // xt2 =  8
@@ -1018,24 +1004,24 @@ inline void fft_32(FIXP_DBL *const _x) {
     FIXP_DBL vr4, ur4;
 
     // i = 0
-    vr = (x[0] + x[32]) >> 1;     /* Re A + Re B */
-    ur = (x[1] + x[33]) >> 1;     /* Im A + Im B */
-    vi = (x[16] + x[48]) SHIFT_A; /* Re C + Re D */
-    ui = (x[17] + x[49]) SHIFT_A; /* Im C + Im D */
+    vr = (x[0] + x[32]) >> 1;  /* Re A + Re B */
+    ur = (x[1] + x[33]) >> 1;  /* Im A + Im B */
+    vi = (x[16] + x[48]) >> 1; /* Re C + Re D */
+    ui = (x[17] + x[49]) >> 1; /* Im C + Im D */
 
-    x[0] = vr + (vi SHIFT_B); /* Re A' = ReA + ReB +ReC + ReD */
-    x[1] = ur + (ui SHIFT_B); /* Im A' = sum of imag values */
+    x[0] = vr + (vi); /* Re A' = ReA + ReB +ReC + ReD */
+    x[1] = ur + (ui); /* Im A' = sum of imag values */
 
     vr2 = (x[4] + x[36]) >> 1; /* Re A + Re B */
     ur2 = (x[5] + x[37]) >> 1; /* Im A + Im B */
 
-    x[4] = vr - (vi SHIFT_B); /* Re C' = -(ReC+ReD) + (ReA+ReB) */
-    x[5] = ur - (ui SHIFT_B); /* Im C' = -Im C -Im D +Im A +Im B */
+    x[4] = vr - (vi); /* Re C' = -(ReC+ReD) + (ReA+ReB) */
+    x[5] = ur - (ui); /* Im C' = -Im C -Im D +Im A +Im B */
 
-    vr -= x[32];             /* Re A - Re B */
-    ur -= x[33];             /* Im A - Im B */
-    vi = (vi SHIFT_B)-x[48]; /* Re C - Re D */
-    ui = (ui SHIFT_B)-x[49]; /* Im C - Im D */
+    vr -= x[32];     /* Re A - Re B */
+    ur -= x[33];     /* Im A - Im B */
+    vi = (vi)-x[48]; /* Re C - Re D */
+    ui = (ui)-x[49]; /* Im C - Im D */
 
     vr3 = (x[2] + x[34]) >> 1; /* Re A + Re B */
     ur3 = (x[3] + x[35]) >> 1; /* Im A + Im B */
@@ -1050,52 +1036,52 @@ inline void fft_32(FIXP_DBL *const _x) {
     x[7] = vi + ur; /* Im D'= Re C - Re D + Im A - Im B */
 
     // i=16
-    vi = (x[20] + x[52]) SHIFT_A; /* Re C + Re D */
-    ui = (x[21] + x[53]) SHIFT_A; /* Im C + Im D */
+    vi = (x[20] + x[52]) >> 1; /* Re C + Re D */
+    ui = (x[21] + x[53]) >> 1; /* Im C + Im D */
 
-    x[16] = vr2 + (vi SHIFT_B); /* Re A' = ReA + ReB +ReC + ReD */
-    x[17] = ur2 + (ui SHIFT_B); /* Im A' = sum of imag values */
-    x[20] = vr2 - (vi SHIFT_B); /* Re C' = -(ReC+ReD) + (ReA+ReB) */
-    x[21] = ur2 - (ui SHIFT_B); /* Im C' = -Im C -Im D +Im A +Im B */
+    x[16] = vr2 + (vi); /* Re A' = ReA + ReB +ReC + ReD */
+    x[17] = ur2 + (ui); /* Im A' = sum of imag values */
+    x[20] = vr2 - (vi); /* Re C' = -(ReC+ReD) + (ReA+ReB) */
+    x[21] = ur2 - (ui); /* Im C' = -Im C -Im D +Im A +Im B */
 
-    vr2 -= x[36];            /* Re A - Re B */
-    ur2 -= x[37];            /* Im A - Im B */
-    vi = (vi SHIFT_B)-x[52]; /* Re C - Re D */
-    ui = (ui SHIFT_B)-x[53]; /* Im C - Im D */
+    vr2 -= x[36];    /* Re A - Re B */
+    ur2 -= x[37];    /* Im A - Im B */
+    vi = (vi)-x[52]; /* Re C - Re D */
+    ui = (ui)-x[53]; /* Im C - Im D */
 
-    vi2 = (x[18] + x[50]) SHIFT_A; /* Re C + Re D */
-    ui2 = (x[19] + x[51]) SHIFT_A; /* Im C + Im D */
+    vi2 = (x[18] + x[50]) >> 1; /* Re C + Re D */
+    ui2 = (x[19] + x[51]) >> 1; /* Im C + Im D */
 
     x[18] = ui + vr2; /* Re B' = Im C - Im D  + Re A - Re B */
     x[19] = ur2 - vi; /* Im B'= -Re C + Re D + Im A - Im B */
 
-    vi3 = (x[22] + x[54]) SHIFT_A; /* Re C + Re D */
-    ui3 = (x[23] + x[55]) SHIFT_A; /* Im C + Im D */
+    vi3 = (x[22] + x[54]) >> 1; /* Re C + Re D */
+    ui3 = (x[23] + x[55]) >> 1; /* Im C + Im D */
 
     x[22] = vr2 - ui; /* Re D' = -Im C + Im D + Re A - Re B */
     x[23] = vi + ur2; /* Im D'= Re C - Re D + Im A - Im B */
 
     // i = 32
 
-    x[32] = vr3 + (vi2 SHIFT_B); /* Re A' = ReA + ReB +ReC + ReD */
-    x[33] = ur3 + (ui2 SHIFT_B); /* Im A' = sum of imag values */
-    x[36] = vr3 - (vi2 SHIFT_B); /* Re C' = -(ReC+ReD) + (ReA+ReB) */
-    x[37] = ur3 - (ui2 SHIFT_B); /* Im C' = -Im C -Im D +Im A +Im B */
+    x[32] = vr3 + (vi2); /* Re A' = ReA + ReB +ReC + ReD */
+    x[33] = ur3 + (ui2); /* Im A' = sum of imag values */
+    x[36] = vr3 - (vi2); /* Re C' = -(ReC+ReD) + (ReA+ReB) */
+    x[37] = ur3 - (ui2); /* Im C' = -Im C -Im D +Im A +Im B */
 
-    vr3 -= x[34];              /* Re A - Re B */
-    ur3 -= x[35];              /* Im A - Im B */
-    vi2 = (vi2 SHIFT_B)-x[50]; /* Re C - Re D */
-    ui2 = (ui2 SHIFT_B)-x[51]; /* Im C - Im D */
+    vr3 -= x[34];      /* Re A - Re B */
+    ur3 -= x[35];      /* Im A - Im B */
+    vi2 = (vi2)-x[50]; /* Re C - Re D */
+    ui2 = (ui2)-x[51]; /* Im C - Im D */
 
     x[34] = ui2 + vr3; /* Re B' = Im C - Im D  + Re A - Re B */
     x[35] = ur3 - vi2; /* Im B'= -Re C + Re D + Im A - Im B */
 
     // i=48
 
-    x[48] = vr4 + (vi3 SHIFT_B); /* Re A' = ReA + ReB +ReC + ReD */
-    x[52] = vr4 - (vi3 SHIFT_B); /* Re C' = -(ReC+ReD) + (ReA+ReB) */
-    x[49] = ur4 + (ui3 SHIFT_B); /* Im A' = sum of imag values */
-    x[53] = ur4 - (ui3 SHIFT_B); /* Im C' = -Im C -Im D +Im A +Im B */
+    x[48] = vr4 + (vi3); /* Re A' = ReA + ReB +ReC + ReD */
+    x[52] = vr4 - (vi3); /* Re C' = -(ReC+ReD) + (ReA+ReB) */
+    x[49] = ur4 + (ui3); /* Im A' = sum of imag values */
+    x[53] = ur4 - (ui3); /* Im C' = -Im C -Im D +Im A +Im B */
 
     vr4 -= x[38]; /* Re A - Re B */
     ur4 -= x[39]; /* Im A - Im B */
@@ -1103,8 +1089,8 @@ inline void fft_32(FIXP_DBL *const _x) {
     x[38] = vr3 - ui2; /* Re D' = -Im C + Im D + Re A - Re B */
     x[39] = vi2 + ur3; /* Im D'= Re C - Re D + Im A - Im B */
 
-    vi3 = (vi3 SHIFT_B)-x[54]; /* Re C - Re D */
-    ui3 = (ui3 SHIFT_B)-x[55]; /* Im C - Im D */
+    vi3 = (vi3)-x[54]; /* Re C - Re D */
+    ui3 = (ui3)-x[55]; /* Im C - Im D */
 
     x[50] = ui3 + vr4; /* Re B' = Im C - Im D  + Re A - Re B */
     x[54] = vr4 - ui3; /* Re D' = -Im C + Im D + Re A - Re B */
@@ -1112,24 +1098,24 @@ inline void fft_32(FIXP_DBL *const _x) {
     x[55] = vi3 + ur4; /* Im D'= Re C - Re D + Im A - Im B */
 
     // i=8
-    vr = (x[8] + x[40]) >> 1;     /* Re A + Re B */
-    ur = (x[9] + x[41]) >> 1;     /* Im A + Im B */
-    vi = (x[24] + x[56]) SHIFT_A; /* Re C + Re D */
-    ui = (x[25] + x[57]) SHIFT_A; /* Im C + Im D */
+    vr = (x[8] + x[40]) >> 1;  /* Re A + Re B */
+    ur = (x[9] + x[41]) >> 1;  /* Im A + Im B */
+    vi = (x[24] + x[56]) >> 1; /* Re C + Re D */
+    ui = (x[25] + x[57]) >> 1; /* Im C + Im D */
 
-    x[8] = vr + (vi SHIFT_B); /* Re A' = ReA + ReB +ReC + ReD */
-    x[9] = ur + (ui SHIFT_B); /* Im A' = sum of imag values */
+    x[8] = vr + (vi); /* Re A' = ReA + ReB +ReC + ReD */
+    x[9] = ur + (ui); /* Im A' = sum of imag values */
 
     vr2 = (x[12] + x[44]) >> 1; /* Re A + Re B */
     ur2 = (x[13] + x[45]) >> 1; /* Im A + Im B */
 
-    x[12] = vr - (vi SHIFT_B); /* Re C' = -(ReC+ReD) + (ReA+ReB) */
-    x[13] = ur - (ui SHIFT_B); /* Im C' = -Im C -Im D +Im A +Im B */
+    x[12] = vr - (vi); /* Re C' = -(ReC+ReD) + (ReA+ReB) */
+    x[13] = ur - (ui); /* Im C' = -Im C -Im D +Im A +Im B */
 
-    vr -= x[40];             /* Re A - Re B */
-    ur -= x[41];             /* Im A - Im B */
-    vi = (vi SHIFT_B)-x[56]; /* Re C - Re D */
-    ui = (ui SHIFT_B)-x[57]; /* Im C - Im D */
+    vr -= x[40];     /* Re A - Re B */
+    ur -= x[41];     /* Im A - Im B */
+    vi = (vi)-x[56]; /* Re C - Re D */
+    ui = (ui)-x[57]; /* Im C - Im D */
 
     vr3 = (x[10] + x[42]) >> 1; /* Re A + Re B */
     ur3 = (x[11] + x[43]) >> 1; /* Im A + Im B */
@@ -1144,52 +1130,52 @@ inline void fft_32(FIXP_DBL *const _x) {
     x[15] = vi + ur; /* Im D'= Re C - Re D + Im A - Im B */
 
     // i=24
-    vi = (x[28] + x[60]) SHIFT_A; /* Re C + Re D */
-    ui = (x[29] + x[61]) SHIFT_A; /* Im C + Im D */
+    vi = (x[28] + x[60]) >> 1; /* Re C + Re D */
+    ui = (x[29] + x[61]) >> 1; /* Im C + Im D */
 
-    x[24] = vr2 + (vi SHIFT_B); /* Re A' = ReA + ReB +ReC + ReD */
-    x[28] = vr2 - (vi SHIFT_B); /* Re C' = -(ReC+ReD) + (ReA+ReB) */
-    x[25] = ur2 + (ui SHIFT_B); /* Im A' = sum of imag values */
-    x[29] = ur2 - (ui SHIFT_B); /* Im C' = -Im C -Im D +Im A +Im B */
+    x[24] = vr2 + (vi); /* Re A' = ReA + ReB +ReC + ReD */
+    x[28] = vr2 - (vi); /* Re C' = -(ReC+ReD) + (ReA+ReB) */
+    x[25] = ur2 + (ui); /* Im A' = sum of imag values */
+    x[29] = ur2 - (ui); /* Im C' = -Im C -Im D +Im A +Im B */
 
-    vr2 -= x[44];            /* Re A - Re B */
-    ur2 -= x[45];            /* Im A - Im B */
-    vi = (vi SHIFT_B)-x[60]; /* Re C - Re D */
-    ui = (ui SHIFT_B)-x[61]; /* Im C - Im D */
+    vr2 -= x[44];    /* Re A - Re B */
+    ur2 -= x[45];    /* Im A - Im B */
+    vi = (vi)-x[60]; /* Re C - Re D */
+    ui = (ui)-x[61]; /* Im C - Im D */
 
-    vi2 = (x[26] + x[58]) SHIFT_A; /* Re C + Re D */
-    ui2 = (x[27] + x[59]) SHIFT_A; /* Im C + Im D */
+    vi2 = (x[26] + x[58]) >> 1; /* Re C + Re D */
+    ui2 = (x[27] + x[59]) >> 1; /* Im C + Im D */
 
     x[26] = ui + vr2; /* Re B' = Im C - Im D  + Re A - Re B */
     x[27] = ur2 - vi; /* Im B'= -Re C + Re D + Im A - Im B */
 
-    vi3 = (x[30] + x[62]) SHIFT_A; /* Re C + Re D */
-    ui3 = (x[31] + x[63]) SHIFT_A; /* Im C + Im D */
+    vi3 = (x[30] + x[62]) >> 1; /* Re C + Re D */
+    ui3 = (x[31] + x[63]) >> 1; /* Im C + Im D */
 
     x[30] = vr2 - ui; /* Re D' = -Im C + Im D + Re A - Re B */
     x[31] = vi + ur2; /* Im D'= Re C - Re D + Im A - Im B */
 
     // i=40
 
-    x[40] = vr3 + (vi2 SHIFT_B); /* Re A' = ReA + ReB +ReC + ReD */
-    x[44] = vr3 - (vi2 SHIFT_B); /* Re C' = -(ReC+ReD) + (ReA+ReB) */
-    x[41] = ur3 + (ui2 SHIFT_B); /* Im A' = sum of imag values */
-    x[45] = ur3 - (ui2 SHIFT_B); /* Im C' = -Im C -Im D +Im A +Im B */
+    x[40] = vr3 + (vi2); /* Re A' = ReA + ReB +ReC + ReD */
+    x[44] = vr3 - (vi2); /* Re C' = -(ReC+ReD) + (ReA+ReB) */
+    x[41] = ur3 + (ui2); /* Im A' = sum of imag values */
+    x[45] = ur3 - (ui2); /* Im C' = -Im C -Im D +Im A +Im B */
 
-    vr3 -= x[42];              /* Re A - Re B */
-    ur3 -= x[43];              /* Im A - Im B */
-    vi2 = (vi2 SHIFT_B)-x[58]; /* Re C - Re D */
-    ui2 = (ui2 SHIFT_B)-x[59]; /* Im C - Im D */
+    vr3 -= x[42];      /* Re A - Re B */
+    ur3 -= x[43];      /* Im A - Im B */
+    vi2 = (vi2)-x[58]; /* Re C - Re D */
+    ui2 = (ui2)-x[59]; /* Im C - Im D */
 
     x[42] = ui2 + vr3; /* Re B' = Im C - Im D  + Re A - Re B */
     x[43] = ur3 - vi2; /* Im B'= -Re C + Re D + Im A - Im B */
 
     // i=56
 
-    x[56] = vr4 + (vi3 SHIFT_B); /* Re A' = ReA + ReB +ReC + ReD */
-    x[60] = vr4 - (vi3 SHIFT_B); /* Re C' = -(ReC+ReD) + (ReA+ReB) */
-    x[57] = ur4 + (ui3 SHIFT_B); /* Im A' = sum of imag values */
-    x[61] = ur4 - (ui3 SHIFT_B); /* Im C' = -Im C -Im D +Im A +Im B */
+    x[56] = vr4 + (vi3); /* Re A' = ReA + ReB +ReC + ReD */
+    x[60] = vr4 - (vi3); /* Re C' = -(ReC+ReD) + (ReA+ReB) */
+    x[57] = ur4 + (ui3); /* Im A' = sum of imag values */
+    x[61] = ur4 - (ui3); /* Im C' = -Im C -Im D +Im A +Im B */
 
     vr4 -= x[46]; /* Re A - Re B */
     ur4 -= x[47]; /* Im A - Im B */
@@ -1197,8 +1183,8 @@ inline void fft_32(FIXP_DBL *const _x) {
     x[46] = vr3 - ui2; /* Re D' = -Im C + Im D + Re A - Re B */
     x[47] = vi2 + ur3; /* Im D'= Re C - Re D + Im A - Im B */
 
-    vi3 = (vi3 SHIFT_B)-x[62]; /* Re C - Re D */
-    ui3 = (ui3 SHIFT_B)-x[63]; /* Im C - Im D */
+    vi3 = (vi3)-x[62]; /* Re C - Re D */
+    ui3 = (ui3)-x[63]; /* Im C - Im D */
 
     x[58] = ui3 + vr4; /* Re B' = Im C - Im D  + Re A - Re B */
     x[62] = vr4 - ui3; /* Re D' = -Im C + Im D + Re A - Re B */
@@ -1212,41 +1198,40 @@ inline void fft_32(FIXP_DBL *const _x) {
     int j = 4;
     do {
       FIXP_DBL vi, ui, vr, ur;
-
-      vr = xt[8];
-      vi = xt[9];
+      vr = xt[8] >> 1;
+      vi = xt[9] >> 1;
       ur = xt[0] >> 1;
       ui = xt[1] >> 1;
-      xt[0] = ur + (vr >> 1);
-      xt[1] = ui + (vi >> 1);
-      xt[8] = ur - (vr >> 1);
-      xt[9] = ui - (vi >> 1);
+      xt[0] = ur + (vr);
+      xt[1] = ui + (vi);
+      xt[8] = ur - (vr);
+      xt[9] = ui - (vi);
 
-      vr = xt[13];
-      vi = xt[12];
+      vr = xt[13] >> 1;
+      vi = xt[12] >> 1;
       ur = xt[4] >> 1;
       ui = xt[5] >> 1;
-      xt[4] = ur + (vr >> 1);
-      xt[5] = ui - (vi >> 1);
-      xt[12] = ur - (vr >> 1);
-      xt[13] = ui + (vi >> 1);
+      xt[4] = ur + (vr);
+      xt[5] = ui - (vi);
+      xt[12] = ur - (vr);
+      xt[13] = ui + (vi);
 
       SUMDIFF_PIFOURTH(vi, vr, xt[10], xt[11])
-      ur = xt[2];
-      ui = xt[3];
-      xt[2] = (ur >> 1) + vr;
-      xt[3] = (ui >> 1) + vi;
-      xt[10] = (ur >> 1) - vr;
-      xt[11] = (ui >> 1) - vi;
+      ur = xt[2] >> 1;
+      ui = xt[3] >> 1;
+      xt[2] = (ur) + vr;
+      xt[3] = (ui) + vi;
+      xt[10] = (ur)-vr;
+      xt[11] = (ui)-vi;
 
       SUMDIFF_PIFOURTH(vr, vi, xt[14], xt[15])
-      ur = xt[6];
-      ui = xt[7];
+      ur = xt[6] >> 1;
+      ui = xt[7] >> 1;
 
-      xt[6] = (ur >> 1) + vr;
-      xt[7] = (ui >> 1) - vi;
-      xt[14] = (ur >> 1) - vr;
-      xt[15] = (ui >> 1) + vi;
+      xt[6] = (ur) + vr;
+      xt[7] = (ui)-vi;
+      xt[14] = (ur)-vr;
+      xt[15] = (ui) + vi;
       xt += 16;
     } while (--j != 0);
   }
@@ -1603,7 +1588,7 @@ static inline void fftN2_func(FIXP_DBL *pInput, const int length,
       pDst[2 * j + 1] = pSrc[2 * j * dim2 + 1];
     }
 
-      /* fft of size dim1 */
+    /* fft of size dim1 */
 #ifndef FFT_TWO_STAGE_SWITCH_CASE
     fft1(pDst);
 #else
@@ -1701,15 +1686,15 @@ static inline void fftN2_func(FIXP_DBL *pInput, const int length,
     C_AALLOC_SCRATCH_END(aDst, DATA_TYPE, 2 * length)                      \
   }
 
-  /*!
-   *
-   *  \brief  complex FFT of length 12,18,24,30,48,60,96, 192, 240, 384, 480
-   *  \param  pInput contains the input signal prescaled right by 2
-   *          pInput contains the output signal scaled by SCALEFACTOR<#length>
-   *          The output signal does not have any fixed headroom
-   *  \return void
-   *
-   */
+/*!
+ *
+ *  \brief  complex FFT of length 12,18,24,30,48,60,96,192,240,384,480
+ *  \param  pInput contains the input signal prescaled right by 2
+ *          pInput contains the output signal scaled by SCALEFACTOR<#length>
+ *          The output signal does not have any fixed headroom
+ *  \return void
+ *
+ */
 
 #ifndef FUNCTION_fft6
 static inline void fft6(FIXP_DBL *pInput) {
