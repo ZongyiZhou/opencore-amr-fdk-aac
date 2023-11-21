@@ -118,8 +118,8 @@ amm-info@iis.fraunhofer.de
   \sa lppTransposer(), main_audio.cpp, sbr_scale.h, \ref documentationOverview
 */
 
-#ifdef __ANDROID__
-#include "log/log.h"
+#if 0//def __ANDROID__
+#include "android/log.h"
 #endif
 
 #include "lpp_tran.h"
@@ -334,7 +334,7 @@ void lppTransposer(
       }
     }
   }
-#ifdef __ANDROID__
+#if 0//def __ANDROID__
   else {
     // Safetynet logging
     android_errorWriteLog(0x534e4554, "112160868");
@@ -930,7 +930,7 @@ void lppTransposerHBE(
       FDKmemclear(&qmfBufferImag[i][targetStopBand], memSize);
     }
   }
-#ifdef __ANDROID__
+#if 0//def __ANDROID__
   else {
     // Safetynet logging
     android_errorWriteLog(0x534e4554, "112160868");
