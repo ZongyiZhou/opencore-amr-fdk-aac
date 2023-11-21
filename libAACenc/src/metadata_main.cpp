@@ -923,6 +923,9 @@ static INT WriteDynamicRangeInfoPayload(const AAC_METADATA* const pMetadata,
                  7); /* dyn_rng_ctl */
   }
 
+#ifdef NEW_BITBUFFER
+  FDKflushCache(&bsWriter);
+#endif
   /* return number of valid bits in extension payload. */
   return FDKgetValidBits(&bsWriter);
 }
@@ -1028,6 +1031,9 @@ static INT WriteEtsiAncillaryDataPayload(const AAC_METADATA* const pMetadata,
     }
   }
 
+#ifdef NEW_BITBUFFER
+  FDKflushCache(&bsWriter);
+#endif
   return FDKgetValidBits(&bsWriter);
 }
 

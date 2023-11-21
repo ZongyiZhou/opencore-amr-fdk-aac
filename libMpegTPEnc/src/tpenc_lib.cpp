@@ -519,7 +519,9 @@ TRANSPORTENC_ERROR transportEnc_GetFrame(HANDLE_TRANSPORTENC hTpEnc,
       *nbytes = (FDKgetValidBits(hBs) + 7) >> 3;
       break;
     case TT_MP4_RAW:
+#ifndef NEW_BITBUFFER
       FDKsyncCache(hBs);
+#endif
       hTpEnc->writer.raw.curSubFrame++;
       *nbytes = ((FDKgetValidBits(hBs) - hTpEnc->writer.raw.prevBits) + 7) >> 3;
       break;

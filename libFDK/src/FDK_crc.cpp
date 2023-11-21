@@ -379,6 +379,19 @@ static inline INT calcCrc_Bytes(USHORT *const pCrc, const USHORT *pCrcLookup,
 
   INT i = nBytes;
   if (hBs != NULL) {
+#ifdef NEW_BITBUFFER
+    if (!(hBs->hBitBuf.BitNdx & 7)) {
+      // bitstream position is on byte boundary
+      UCHAR *pdata = (UCHAR *)(((uintptr_t*)hBs->hBitBuf.Buffer) + hBs->hBitBuf.WordPos);
+      pdata -= hBs->hBitBuf.BitNdx / 8;
+      FDK_pushForwardReader(&hBs->hBitBuf, nBytes * 8);
+      for (; i > 0; i--) {
+        crc = (crc << 8) ^ pCrcLookup[(UCHAR)(crc >> 8) ^ *pdata++];
+      }
+      *pCrc = crc;
+      return nBytes;
+    }
+#endif
     for (; i >= 4; i -= 4) {
       UINT data = FDKreadBits(hBs, 32);
       crc = (crc << 8) ^ pCrcLookup[(UCHAR)((crc >> 8) ^ (data >> 24))];
@@ -432,6 +445,9 @@ static void crcCalc(HANDLE_FDK_CRCINFO hCrcInfo, HANDLE_FDK_BITSTREAM hBs,
     FDKpushBiDirectional(&bsReader,
                          -(rD->validBits - (INT)FDKgetValidBits(&bsReader)));
   } else {
+#ifdef NEW_BITBUFFER
+    FDKflushCache(hBs);
+#endif
     FDKinitBitStream(&bsReader, hBs->hBitBuf.Buffer, hBs->hBitBuf.bufSize,
                      hBs->hBitBuf.ValidBits, BS_READER);
     FDKpushBiDirectional(&bsReader, rD->validBits);

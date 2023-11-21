@@ -591,8 +591,11 @@ FDK_SACENC_ERROR fdk_sacenc_writeSpatialSpecificConfig(
       goto bail;
     }
 
+#ifdef NEW_BITBUFFER
+    FDKflushCache(&bitstream);
+#endif
     /* terminate buffer with alignment */
-    FDKbyteAlign(&bitstream, 0);
+    //FDKbyteAlign(&bitstream, 0);
 
   } /* valid handle */
 
@@ -818,6 +821,10 @@ FDK_SACENC_ERROR fdk_sacenc_writeSpatialFrame(UCHAR *const pOutputBuffer,
 
     /* terminate buffer with alignment */
     FDKbyteAlign(&bitstream, 0);
+
+#ifdef NEW_BITBUFFER
+    FDKflushCache(&bitstream);
+#endif
 
   } /* valid handle */
 

@@ -1165,6 +1165,9 @@ INT FDKsbrEnc_EnvEncodeFrame(
   /*
     save new payload, set to zero length if greater than MAX_PAYLOAD_SIZE
   */
+#ifdef NEW_BITBUFFER
+  FDKflushCache(&hSbrElement->CmonData.sbrBitbuf);
+#endif
   hSbrElement->payloadDelayLineSize[hEnvEncoder->nBitstrDelay] =
       FDKgetValidBits(&hSbrElement->CmonData.sbrBitbuf);
 

@@ -115,8 +115,10 @@ amm-info@iis.fraunhofer.de
 typedef enum { BS_READER, BS_WRITER } FDK_BS_CFG;
 
 typedef struct {
+#ifndef NEW_BITBUFFER
   UINT CacheWord;
   UINT BitsInCache;
+#endif
   FDK_BITBUF hBitBuf;
   UINT ConfigCache;
 } FDK_BITSTREAM;
@@ -139,10 +141,12 @@ HANDLE_FDK_BITSTREAM FDKcreateBitStream(UCHAR *pBuffer, UINT bufSize,
   HANDLE_FDK_BITSTREAM hBitStream =
       (HANDLE_FDK_BITSTREAM)FDKcalloc(1, sizeof(FDK_BITSTREAM));
   if (hBitStream == NULL) return NULL;
-  FDK_InitBitBuffer(&hBitStream->hBitBuf, pBuffer, bufSize, 0);
+  FDK_InitBitBuffer(&hBitStream->hBitBuf, pBuffer, bufSize, 0, config);
 
+#ifndef NEW_BITBUFFER
   /* init cache */
   hBitStream->CacheWord = hBitStream->BitsInCache = 0;
+#endif
   hBitStream->ConfigCache = config;
 
   return hBitStream;
@@ -164,10 +168,12 @@ FDK_INLINE
 void FDKinitBitStream(HANDLE_FDK_BITSTREAM hBitStream, UCHAR *pBuffer,
                       UINT bufSize, UINT validBits,
                       FDK_BS_CFG config = BS_READER) {
-  FDK_InitBitBuffer(&hBitStream->hBitBuf, pBuffer, bufSize, validBits);
+  FDK_InitBitBuffer(&hBitStream->hBitBuf, pBuffer, bufSize, validBits, config);
 
+#ifndef NEW_BITBUFFER
   /* init cache */
   hBitStream->CacheWord = hBitStream->BitsInCache = 0;
+#endif
   hBitStream->ConfigCache = config;
 }
 
@@ -182,8 +188,10 @@ FDK_INLINE void FDKresetBitbuffer(HANDLE_FDK_BITSTREAM hBitStream,
                                   FDK_BS_CFG config = BS_READER) {
   FDK_ResetBitBuffer(&hBitStream->hBitBuf);
 
+#ifndef NEW_BITBUFFER
   /* init cache */
   hBitStream->CacheWord = hBitStream->BitsInCache = 0;
+#endif
   hBitStream->ConfigCache = config;
 }
 
@@ -209,6 +217,9 @@ FDK_INLINE void FDKdeleteBitStream(HANDLE_FDK_BITSTREAM hBitStream) {
 
 FDK_INLINE UINT FDKreadBits(HANDLE_FDK_BITSTREAM hBitStream,
                             const UINT numberOfBits) {
+#ifdef NEW_BITBUFFER
+  return FDK_get(&hBitStream->hBitBuf, numberOfBits);
+#else
   UINT bits = 0;
   INT missingBits = (INT)numberOfBits - (INT)hBitStream->BitsInCache;
 
@@ -223,9 +234,13 @@ FDK_INLINE UINT FDKreadBits(HANDLE_FDK_BITSTREAM hBitStream,
 
   return (bits | (hBitStream->CacheWord >> hBitStream->BitsInCache)) &
          BitMask[numberOfBits];
+#endif
 }
 
 FDK_INLINE UINT FDKreadBit(HANDLE_FDK_BITSTREAM hBitStream) {
+#ifdef NEW_BITBUFFER
+  return FDK_get(&hBitStream->hBitBuf, 1);
+#else
   if (!hBitStream->BitsInCache) {
     hBitStream->CacheWord = FDK_get32(&hBitStream->hBitBuf);
     hBitStream->BitsInCache = CACHE_BITS - 1;
@@ -234,6 +249,7 @@ FDK_INLINE UINT FDKreadBit(HANDLE_FDK_BITSTREAM hBitStream) {
   hBitStream->BitsInCache--;
 
   return (hBitStream->CacheWord >> hBitStream->BitsInCache) & 1;
+#endif
 }
 
 /**
@@ -250,6 +266,9 @@ FDK_INLINE UINT FDKread2Bits(HANDLE_FDK_BITSTREAM hBitStream) {
   ** Version corresponds to optimized FDKreadBits implementation
   ** calling FDK_get32, that keeps read pointer aligned.
   */
+#ifdef NEW_BITBUFFER
+  return FDK_get(&hBitStream->hBitBuf, 2);
+#else
   UINT bits = 0;
   INT missingBits = 2 - (INT)hBitStream->BitsInCache;
   if (missingBits > 0) {
@@ -261,31 +280,7 @@ FDK_INLINE UINT FDKread2Bits(HANDLE_FDK_BITSTREAM hBitStream) {
   hBitStream->BitsInCache -= 2;
 
   return (bits | (hBitStream->CacheWord >> hBitStream->BitsInCache)) & 0x3;
-}
-
-/**
- * \brief ReadBits Function (backward). This function returns a number of
- * sequential bits from the input bitstream.
- *
- * \param hBitStream HANDLE_FDK_BITSTREAM handle
- * \param numberOfBits  The number of bits to be retrieved.
- * \return the requested bits, right aligned
- */
-FDK_INLINE UINT FDKreadBitsBwd(HANDLE_FDK_BITSTREAM hBitStream,
-                               const UINT numberOfBits) {
-  const UINT validMask = BitMask[numberOfBits];
-
-  if (hBitStream->BitsInCache <= numberOfBits) {
-    const INT freeBits = (CACHE_BITS - 1) - hBitStream->BitsInCache;
-
-    hBitStream->CacheWord = (hBitStream->CacheWord << freeBits) |
-                            FDK_getBwd(&hBitStream->hBitBuf, freeBits);
-    hBitStream->BitsInCache += freeBits;
-  }
-
-  hBitStream->BitsInCache -= numberOfBits;
-
-  return (hBitStream->CacheWord >> hBitStream->BitsInCache) & validMask;
+#endif
 }
 
 /**
@@ -317,6 +312,7 @@ FDK_INLINE UINT escapedValue(HANDLE_FDK_BITSTREAM hBitStream, int nBits1,
   return value;
 }
 
+#ifdef NEW_BITBUFFER
 /**
  * \brief return a number of bits from the bitBuffer.
  *        You have to know what you do! Cache has to be synchronized before
@@ -329,6 +325,7 @@ FDK_INLINE UINT escapedValue(HANDLE_FDK_BITSTREAM hBitStream, int nBits1,
 FDK_INLINE UINT FDKgetBits(HANDLE_FDK_BITSTREAM hBitStream, UINT numBits) {
   return FDK_get(&hBitStream->hBitBuf, numBits);
 }
+#endif
 
 /**
  * \brief WriteBits Function. This function writes numberOfBits of value into
@@ -341,16 +338,19 @@ FDK_INLINE UINT FDKgetBits(HANDLE_FDK_BITSTREAM hBitStream, UINT numBits) {
  */
 FDK_INLINE UCHAR FDKwriteBits(HANDLE_FDK_BITSTREAM hBitStream, UINT value,
                               const UINT numberOfBits) {
+#ifdef NEW_BITBUFFER
+  FDK_put(&hBitStream->hBitBuf, value, numberOfBits);
+#else
   const UINT validMask = BitMask[numberOfBits];
 
   if (hBitStream == NULL) {
     return numberOfBits;
   }
 
+  value = value & validMask;
   if ((hBitStream->BitsInCache + numberOfBits) < CACHE_BITS) {
     hBitStream->BitsInCache += numberOfBits;
-    hBitStream->CacheWord =
-        (hBitStream->CacheWord << numberOfBits) | (value & validMask);
+    hBitStream->CacheWord = (hBitStream->CacheWord << numberOfBits) | value;
   } else {
     /* Put always 32 bits into memory             */
     /* - fill cache's LSBits with MSBits of value */
@@ -359,46 +359,22 @@ FDK_INLINE UCHAR FDKwriteBits(HANDLE_FDK_BITSTREAM hBitStream, UINT value,
     /* - upper bits in cache are don't care       */
 
     /* Compute number of bits to be filled into cache */
-    int missing_bits = CACHE_BITS - hBitStream->BitsInCache;
-    int remaining_bits = numberOfBits - missing_bits;
-    value = value & validMask;
-    /* Avoid shift left by 32 positions */
-    UINT CacheWord =
-        (missing_bits == 32) ? 0 : (hBitStream->CacheWord << missing_bits);
-    CacheWord |= (value >> (remaining_bits));
-    FDK_put(&hBitStream->hBitBuf, CacheWord, 32);
-
-    hBitStream->CacheWord = value;
-    hBitStream->BitsInCache = remaining_bits;
+    if (hBitStream->BitsInCache == 0) {
+      FDK_put(&hBitStream->hBitBuf, value, 32);
+      hBitStream->CacheWord = 0;
+      hBitStream->BitsInCache = 0;
+    } else {
+      int missing_bits = CACHE_BITS - hBitStream->BitsInCache;
+      int remaining_bits = numberOfBits - missing_bits;
+      /* Avoid shift left by 32 positions */
+      UINT CacheWord = hBitStream->CacheWord << missing_bits;
+      CacheWord |= value >> remaining_bits;
+      FDK_put(&hBitStream->hBitBuf, CacheWord, 32);
+      hBitStream->CacheWord = value;
+      hBitStream->BitsInCache = remaining_bits;
+    }
   }
-
-  return numberOfBits;
-}
-
-/**
- * \brief WriteBits Function (backward). This function writes numberOfBits of
- * value into bitstream.
- *
- * \param hBitStream HANDLE_FDK_BITSTREAM handle
- * \param value         Variable holds data to be written.
- * \param numberOfBits  The number of bits to be written.
- * \return number of bits written
- */
-FDK_INLINE UCHAR FDKwriteBitsBwd(HANDLE_FDK_BITSTREAM hBitStream, UINT value,
-                                 const UINT numberOfBits) {
-  const UINT validMask = BitMask[numberOfBits];
-
-  if ((hBitStream->BitsInCache + numberOfBits) <= CACHE_BITS) {
-    hBitStream->BitsInCache += numberOfBits;
-    hBitStream->CacheWord =
-        (hBitStream->CacheWord << numberOfBits) | (value & validMask);
-  } else {
-    FDK_putBwd(&hBitStream->hBitBuf, hBitStream->CacheWord,
-               hBitStream->BitsInCache);
-    hBitStream->BitsInCache = numberOfBits;
-    hBitStream->CacheWord = (value & validMask);
-  }
-
+#endif
   return numberOfBits;
 }
 
@@ -450,35 +426,29 @@ FDK_INLINE UCHAR FDKwriteEscapedValue(HANDLE_FDK_BITSTREAM hBitStream,
  * \return void
  */
 FDK_INLINE void FDKsyncCache(HANDLE_FDK_BITSTREAM hBitStream) {
-  if (hBitStream->ConfigCache == BS_READER)
-    FDK_pushBack(&hBitStream->hBitBuf, hBitStream->BitsInCache,
-                 hBitStream->ConfigCache);
-  else if (hBitStream->BitsInCache) /* BS_WRITER */
+#ifdef NEW_BITBUFFER
+  if (hBitStream->ConfigCache == BS_WRITER) {
+    FDK_syncWriter(&hBitStream->hBitBuf);
+  }
+#else
+  if (hBitStream->ConfigCache == BS_READER) {
+    FDK_pushBackReader(&hBitStream->hBitBuf, hBitStream->BitsInCache);
+  } else if (hBitStream->BitsInCache) /* BS_WRITER */
     FDK_put(&hBitStream->hBitBuf, hBitStream->CacheWord,
             hBitStream->BitsInCache);
 
   hBitStream->BitsInCache = 0;
   hBitStream->CacheWord = 0;
+#endif
 }
 
-/**
- * \brief SyncCache Function. Clear cache after read backwards.
- *
- * \param  hBitStream HANDLE_FDK_BITSTREAM handle
- * \return void
- */
-FDK_INLINE void FDKsyncCacheBwd(HANDLE_FDK_BITSTREAM hBitStream) {
-  if (hBitStream->ConfigCache == BS_READER) {
-    FDK_pushForward(&hBitStream->hBitBuf, hBitStream->BitsInCache,
-                    hBitStream->ConfigCache);
-  } else { /* BS_WRITER */
-    FDK_putBwd(&hBitStream->hBitBuf, hBitStream->CacheWord,
-               hBitStream->BitsInCache);
-  }
-
-  hBitStream->BitsInCache = 0;
-  hBitStream->CacheWord = 0;
+#ifdef NEW_BITBUFFER
+FDK_INLINE void FDKflushCache(HANDLE_FDK_BITSTREAM hBitStream) {
+  FDK_flushWriter(&hBitStream->hBitBuf);
 }
+#else
+#define FDKflushCache(h) FDKsyncCache(h)
+#endif
 
 /**
  * \brief Byte Alignment Function with anchor
@@ -494,20 +464,15 @@ FDK_INLINE void FDKsyncCacheBwd(HANDLE_FDK_BITSTREAM hBitStream) {
  */
 FDK_INLINE void FDKbyteAlign(HANDLE_FDK_BITSTREAM hBitStream,
                              UINT alignmentAnchor) {
+#ifndef NEW_BITBUFFER
   FDKsyncCache(hBitStream);
+#endif
   if (hBitStream->ConfigCache == BS_READER) {
-    FDK_pushForward(
-        &hBitStream->hBitBuf,
-        (UINT)((INT)8 - (((INT)alignmentAnchor -
-                          (INT)FDK_getValidBits(&hBitStream->hBitBuf)) &
-                         0x07)) &
-            0x07,
-        hBitStream->ConfigCache);
+    FDK_pushForwardReader(&hBitStream->hBitBuf,
+                          (FDK_getValidBits(&hBitStream->hBitBuf) - alignmentAnchor) & 7);
   } else {
     FDK_put(&hBitStream->hBitBuf, 0,
-            (8 - ((FDK_getValidBits(&hBitStream->hBitBuf) - alignmentAnchor) &
-                  0x07)) &
-                0x07);
+            (alignmentAnchor - FDK_getValidBits(&hBitStream->hBitBuf)) & 7);
   }
 }
 
@@ -529,34 +494,59 @@ FDK_INLINE void FDKbyteAlign(HANDLE_FDK_BITSTREAM hBitStream,
  * \param numberOfBits  The number of bits to be pushed back/for.
  * \return void
  */
-FDK_INLINE void FDKpushBackCache(HANDLE_FDK_BITSTREAM hBitStream,
-                                 const UINT numberOfBits) {
-  FDK_ASSERT((hBitStream->BitsInCache + numberOfBits) <= CACHE_BITS);
-  hBitStream->BitsInCache += numberOfBits;
-}
-
 FDK_INLINE void FDKpushBack(HANDLE_FDK_BITSTREAM hBitStream,
                             const UINT numberOfBits) {
-  if ((hBitStream->BitsInCache + numberOfBits) < CACHE_BITS &&
-      (hBitStream->ConfigCache == BS_READER)) {
-    hBitStream->BitsInCache += numberOfBits;
-    FDKsyncCache(hBitStream); /* sync cache to avoid invalid cache */
+  if (hBitStream->ConfigCache == BS_READER) {
+#ifdef NEW_BITBUFFER
+    FDK_pushBackReader(&hBitStream->hBitBuf, numberOfBits);
+  } else {
+    FDK_pushBackWriter(&hBitStream->hBitBuf, numberOfBits);
+  }
+#else
+    if (hBitStream->BitsInCache + numberOfBits < CACHE_BITS) {
+      hBitStream->BitsInCache += numberOfBits;
+      FDKsyncCache(hBitStream); /* sync cache to avoid invalid cache */
+    } else {
+      FDKsyncCache(hBitStream);
+      FDK_pushBackReader(&hBitStream->hBitBuf, numberOfBits);
+    }
   } else {
     FDKsyncCache(hBitStream);
-    FDK_pushBack(&hBitStream->hBitBuf, numberOfBits, hBitStream->ConfigCache);
+    FDK_pushBackWriter(&hBitStream->hBitBuf, numberOfBits);
   }
+#endif
+}
+
+FDK_INLINE void FDKpushBackCache(HANDLE_FDK_BITSTREAM hBitStream,
+                                 const UINT numberOfBits) {
+#ifdef NEW_BITBUFFER
+  FDK_pushBackReader(&hBitStream->hBitBuf, numberOfBits);
+#else
+  FDK_ASSERT((hBitStream->BitsInCache + numberOfBits) <= CACHE_BITS);
+  hBitStream->BitsInCache += numberOfBits;
+#endif
 }
 
 FDK_INLINE void FDKpushFor(HANDLE_FDK_BITSTREAM hBitStream,
                            const UINT numberOfBits) {
-  if ((hBitStream->BitsInCache > numberOfBits) &&
-      (hBitStream->ConfigCache == BS_READER)) {
-    hBitStream->BitsInCache -= numberOfBits;
+  if (hBitStream->ConfigCache == BS_READER) {
+#ifdef NEW_BITBUFFER
+    FDK_pushForwardReader(&hBitStream->hBitBuf, numberOfBits);
+  } else {
+    FDK_pushForwardWriter(&hBitStream->hBitBuf, numberOfBits);
+  }
+#else
+    if (hBitStream->BitsInCache > numberOfBits) {
+      hBitStream->BitsInCache -= numberOfBits;
+    } else {
+      FDKsyncCache(hBitStream);
+      FDK_pushForwardReader(&hBitStream->hBitBuf, numberOfBits);
+    }
   } else {
     FDKsyncCache(hBitStream);
-    FDK_pushForward(&hBitStream->hBitBuf, numberOfBits,
-                    hBitStream->ConfigCache);
+    FDK_pushForwardWriter(&hBitStream->hBitBuf, numberOfBits);
   }
+#endif
 }
 
 FDK_INLINE void FDKpushBiDirectional(HANDLE_FDK_BITSTREAM hBitStream,
@@ -575,7 +565,9 @@ FDK_INLINE void FDKpushBiDirectional(HANDLE_FDK_BITSTREAM hBitStream,
  *
  */
 FDK_INLINE UINT FDKgetValidBits(HANDLE_FDK_BITSTREAM hBitStream) {
+#ifndef NEW_BITBUFFER
   FDKsyncCache(hBitStream);
+#endif
   return FDK_getValidBits(&hBitStream->hBitBuf);
 }
 
@@ -603,25 +595,10 @@ FDK_INLINE INT FDKgetFreeBits(HANDLE_FDK_BITSTREAM hBitStream) {
 FDK_INLINE void FDKfeedBuffer(HANDLE_FDK_BITSTREAM hBitStream,
                               const UCHAR inputBuffer[], const UINT bufferSize,
                               UINT *bytesValid) {
+#ifndef NEW_BITBUFFER
   FDKsyncCache(hBitStream);
+#endif
   FDK_Feed(&hBitStream->hBitBuf, inputBuffer, bufferSize, bytesValid);
-}
-
-/**
- * \brief fill destination BitBuffer with a number of bytes from source
- * BitBuffer. The bytesValid variable returns the number of ramaining valid
- * bytes in source BitBuffer.
- *
- * \param hBSDst            HANDLE_FDK_BITSTREAM handle to write data into
- * \param hBSSrc            HANDLE_FDK_BITSTREAM handle to read data from
- * \param bytesValid        Input: number of valid bytes in inputBuffer. Output:
- * bytes still left unread in inputBuffer.
- * \return void
- */
-FDK_INLINE void FDKcopyBuffer(HANDLE_FDK_BITSTREAM hBSDst,
-                              HANDLE_FDK_BITSTREAM hBSSrc, UINT *bytesValid) {
-  FDKsyncCache(hBSSrc);
-  FDK_Copy(&hBSDst->hBitBuf, &hBSSrc->hBitBuf, bytesValid);
 }
 
 /**
@@ -635,7 +612,7 @@ FDK_INLINE void FDKcopyBuffer(HANDLE_FDK_BITSTREAM hBSDst,
  */
 FDK_INLINE void FDKfetchBuffer(HANDLE_FDK_BITSTREAM hBitStream,
                                UCHAR *outputBuffer, UINT *writeBytes) {
-  FDKsyncCache(hBitStream);
+  FDKflushCache(hBitStream);
   FDK_Fetch(&hBitStream->hBitBuf, outputBuffer, writeBytes);
 }
 

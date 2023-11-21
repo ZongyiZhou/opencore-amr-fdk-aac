@@ -564,9 +564,8 @@ static int extractExtendedData(
             if (bPsRead &&
                 !hParametricStereoDec->bsData[hParametricStereoDec->bsReadSlot]
                      .mpeg.bPsHeaderValid) {
-              cnt = nBitsLeft >> 3; /* number of remaining bytes */
-              for (i = 0; i < cnt; i++) FDKreadBits(hBs, 8);
-              nBitsLeft -= cnt * 8;
+              FDKpushFor(hBs, nBitsLeft & ~7);
+              nBitsLeft &= 7;
             } else {
               nBitsLeft -=
                   (INT)ReadPsData(hParametricStereoDec, hBs, nBitsLeft);
@@ -590,9 +589,8 @@ static int extractExtendedData(
           break;
 
         default:
-          cnt = nBitsLeft >> 3; /* number of remaining bytes */
-          for (i = 0; i < cnt; i++) FDKreadBits(hBs, 8);
-          nBitsLeft -= cnt * 8;
+          FDKpushFor(hBs, nBitsLeft & ~7);
+          nBitsLeft &= 7;
           break;
       }
     }
@@ -600,7 +598,7 @@ static int extractExtendedData(
     if (nBitsLeft < 0) {
       frameOk = 0;
       goto bail;
-    } else {
+    } else if (nBitsLeft) {
       /* Read fill bits for byte alignment */
       FDKreadBits(hBs, nBitsLeft);
     }

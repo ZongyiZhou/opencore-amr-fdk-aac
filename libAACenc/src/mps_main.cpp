@@ -466,6 +466,9 @@ static INT FDK_MpegsEnc_WriteFrameHeader(HANDLE_MPS_ENCODER hMpsEnc,
       FDK_ASSERT(1); /* time alignment not supported */
     }
 
+#ifdef NEW_BITBUFFER
+    FDKflushCache(&Bs);
+#endif
     numBits = FDKgetValidBits(&Bs);
   } /* valid handle */
 

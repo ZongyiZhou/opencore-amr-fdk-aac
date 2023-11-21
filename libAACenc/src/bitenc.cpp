@@ -1314,6 +1314,10 @@ AAC_ENCODER_ERROR FDKaacEnc_WriteBitstream(HANDLE_TRANSPORTENC hTpEnc,
 
   transportEnc_EndAccessUnit(hTpEnc, &frameBits);
 
+#ifdef NEW_BITBUFFER
+  FDKflushCache(hBs);
+#endif
+
   if (frameBits != qcOut->totalBits + qcKernel->globHdrBits) {
     return AAC_ENC_WRITTEN_BITS_ERROR;
   }

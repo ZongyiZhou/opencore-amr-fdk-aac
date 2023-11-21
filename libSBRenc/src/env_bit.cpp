@@ -226,6 +226,9 @@ void FDKsbrEnc_AssembleSbrBitstream(HANDLE_COMMON_DATA hCmonData,
       */
       FDKwriteBits(&hCmonData->sbrBitbuf, 0, hCmonData->sbrFillBits);
 
+#ifdef NEW_BITBUFFER
+      FDKflushCache(&hCmonData->sbrBitbuf);
+#endif
       FDK_ASSERT(FDKgetValidBits(&hCmonData->sbrBitbuf) % 8 == 4);
     }
 
