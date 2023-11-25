@@ -124,6 +124,10 @@ inline USHORT bswap_16(USHORT value) {
     return (value << 8) | (value >> 8);
 }
 
+#ifdef __GNUC__
+#define bswap_32(x) __builtin_bswap32(x)
+#define bswap_64(x) __builtin_bswap64(x)
+#else
 inline UINT bswap_32(UINT value) {
   return (value << 24) | (value >> 24) | ((value << 8) & 0xff0000) |
          ((value >> 8) & 0xff00);
@@ -142,7 +146,8 @@ inline UINT64 bswap_64(UINT64 value) {
   r.h32 = t;
   return r.u64;
 }
-#endif
+#endif // __GNUC__
+#endif // HAVE_BSWAP
 
 #ifdef __LP64__
 #define bswap(x) bswap_64(x)
