@@ -100,8 +100,7 @@ jobs:
     runs-on: macos-latest
     steps:
       - name: Install autotools
-        run: |
-          brew install automake
+        run: brew install automake
       - name: Checkout sources
         uses: actions/checkout@v4
       - name: Build
@@ -119,6 +118,11 @@ jobs:
         run: |
           cmake . -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_PROGRAMS=YES -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64" -DCMAKE_C_FLAGS="-Werror" -DCMAKE_CXX_FLAGS="-Werror -Wno-deprecated-declarations"
           cmake --build build
+      - run: brew install ffmpeg md5sha1sum
+      - name: Run tests
+        run: |
+          cd build
+          ../test/run-test.sh
 
   mingw-cross-autotools:
     runs-on: ubuntu-latest
@@ -206,15 +210,19 @@ jobs:
           cmake . -G Ninja -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_PROGRAMS=YES
           cmake --build build
 
-  msvc-cmake-arm64:
+  msvc-cmake-arm:
     runs-on: windows-latest
     steps:
       - name: Checkout sources
         uses: actions/checkout@v4
-      - name: Build
+      - name: Build 64bit
         run: |
-          cmake . -B build -DBUILD_PROGRAMS=YES -A ARM64
-          cmake --build build --config Release
+          cmake . -B build64 -DBUILD_PROGRAMS=YES -A ARM64
+          cmake --build build64 --config Release
+      - name: Build 32bit
+        run: |
+          cmake . -B build32 -DBUILD_PROGRAMS=YES -A ARM
+          cmake --build build32 --config Release
 
   llvm-mingw:
     runs-on: ubuntu-latest
