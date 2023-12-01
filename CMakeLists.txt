@@ -451,6 +451,10 @@ if(WIN32 AND BUILD_SHARED_LIBS)
   set(libfdk_aac_SOURCES ${libfdk_aac_SOURCES} fdk-aac.def)
 endif()
 
+if(ANDROID)
+ set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libstdc++ -Wl,--hash-style=both")
+endif()
+
 ## Create Library target. Actually fdk-aac is enough, but we also create
 ## FDK-AAC::fdk-aac for consistence with config-file package.
 
@@ -592,6 +596,7 @@ if(BUILD_PROGRAMS)
     sha1.c
     sha1.h)
 
+  add_link_options($<$<CONFIG:RELEASE>:-s>)
   add_executable(test-encode-decode ${test_encode_decode_SOURCES})
   target_link_libraries(test-encode-decode PRIVATE fdk-aac $<IF:$<BOOL:${HAVE_DEFAULT_MATH}>,,m>)
 endif()

@@ -46,7 +46,7 @@ jobs:
       - name: Build amd64
         run: |
           cmake . -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_PROGRAMS=YES -DCMAKE_C_FLAGS="-Werror" -DCMAKE_CXX_FLAGS="-Werror -Wno-stringop-overflow"
-          cmake --build build -j4
+          cmake --build build
       - name: Run tests amd64
         run: |
           sudo apt-get install --no-install-recommends ffmpeg
@@ -57,7 +57,7 @@ jobs:
         run: |
           sudo apt install gcc-multilib g++-multilib
           cmake . -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_PROGRAMS=YES -DCMAKE_C_FLAGS="-m32 -march=k8 -ffast-math -Werror" -DCMAKE_CXX_FLAGS="-m32 -march=k8 -ffast-math -Werror -Wno-stringop-overflow"
-          cmake --build build -j4
+          cmake --build build
       - name: Run tests x86 SSE2
         run: |
           cd build
@@ -233,6 +233,31 @@ jobs:
           ./autogen.sh
           ./configure --host=aarch64-w64-mingw32 --enable-example
           make -j$(nproc) CFLAGS="-g -O2 -Werror" CXXFLAGS="-g -O2 -Werror"
+
+  android-ndk-arm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: nttld/setup-ndk@v1
+        id: install-ndk
+        with:
+          ndk-version: r26b
+      - name: Install ninja
+        run: sudo apt install -y ninja-build
+      - name: Checkout sources
+        uses: actions/checkout@v4
+      - name: Build arm64
+        run: |
+          export NDK_ROOT=${{ steps.install-ndk.outputs.ndk-path }}
+          export FLAGS="-Werror -mcpu=cortex-a57"
+          cmake . -GNinja -Bbuild -DCMAKE_BUILD_TYPE=Release -DBUILD_PROGRAMS=YES -DCMAKE_TOOLCHAIN_FILE=$NDK_ROOT/build/cmake/android.toolchain.cmake -DANDROID_NDK=$NDK_ROOT -DANDROID_ABI=arm64-v8a -DANDROID_PLATFORM=android-23 -DCMAKE_C_FLAGS="$FLAGS" -DCMAKE_CXX_FLAGS="$FLAGS"
+          cmake --build build
+      - name: Build armv7-a
+        run: |
+          rm -rf build/
+          export NDK_ROOT=${{ steps.install-ndk.outputs.ndk-path }}
+          export FLAGS="-Werror -mcpu=cortex-a17 -mthumb -mfloat-abi=softfp -mfpu=neon"
+          cmake . -GNinja -Bbuild -DCMAKE_BUILD_TYPE=Release -DBUILD_PROGRAMS=YES -DCMAKE_TOOLCHAIN_FILE=$NDK_ROOT/build/cmake/android.toolchain.cmake -DANDROID_NDK=$NDK_ROOT -DANDROID_ABI=armeabi-v7a -DANDROID_PLATFORM=android-23 -DANDROID_STL=c++_shared -DCMAKE_C_FLAGS="$FLAGS" -DCMAKE_CXX_FLAGS="$FLAGS"
+          cmake --build build
 
   linux-ffmpeg:
     runs-on: ubuntu-latest
