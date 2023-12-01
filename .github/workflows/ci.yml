@@ -174,10 +174,23 @@ jobs:
     steps:
       - name: Checkout sources
         uses: actions/checkout@v4
-      - name: Build
+      - name: Build amd64
         run: |
           cmake . -B build -DBUILD_PROGRAMS=YES
           cmake --build build --config Release
+      - name: Run tests amd64
+        run: |
+          cd build\release
+          ..\..\test\run-test.ps1
+      - name: Build x86
+        run: |
+          rm -R build
+          cmake . -B build -DBUILD_PROGRAMS=YES -DCMAKE_GENERATOR_PLATFORM=WIN32
+          cmake --build build --config Release
+      - name: Run tests x86
+        run: |
+          cd build\release
+          ..\..\test\run-test.ps1
 
   msvc-cmake-ninja-arm:
     runs-on: windows-latest
