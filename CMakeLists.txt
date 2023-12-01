@@ -69,10 +69,7 @@ option(FDK_AAC_INSTALL_PKGCONFIG_MODULE "Install pkg-config .pc file" ON)
 # Checks
 
 ## Check if math functions are in separate library (Most of Linux distros, maybe some other OSes)
-check_function_exists(sin HAVE_DEFAULT_MATH)
-if(NOT HAVE_DEFAULT_MATH)
-  check_library_exists(m sin "" HAVE_LIBM)
-endif()
+check_function_exists(log10 HAVE_DEFAULT_MATH)
 
 # Library
 
@@ -482,7 +479,7 @@ target_include_directories(fdk-aac
     libPCMutils/include)
 
 ### Link math library if required
-target_link_libraries(fdk-aac PRIVATE $<$<BOOL:${HAVE_LIBM}>:m>)
+target_link_libraries(fdk-aac PRIVATE $<IF:$<BOOL:${HAVE_DEFAULT_MATH}>,,m>)
 
 ### Set public headers and shared library version. Version info is critical for Unix-like OSes.
 set_target_properties(fdk-aac PROPERTIES
@@ -522,7 +519,7 @@ if(FDK_AAC_INSTALL_PKGCONFIG_MODULE)
   set(libdir "\$\{exec_prefix\}/${CMAKE_INSTALL_LIBDIR}")
   set(includedir "\$\{prefix\}/${CMAKE_INSTALL_INCLUDEDIR}")
   set(PACKAGE_VERSION ${PROJECT_VERSION})
-  if(HAVE_LIBM)
+  if(NOT HAVE_DEFAULT_MATH)
     if(BUILD_SHARED_LIBS)
       set(LIBS_PRIVATE "-lm")
     else()
@@ -596,5 +593,5 @@ if(BUILD_PROGRAMS)
     sha1.h)
 
   add_executable(test-encode-decode ${test_encode_decode_SOURCES})
-  target_link_libraries(test-encode-decode PRIVATE fdk-aac)
+  target_link_libraries(test-encode-decode PRIVATE fdk-aac $<IF:$<BOOL:${HAVE_DEFAULT_MATH}>,,m>)
 endif()
