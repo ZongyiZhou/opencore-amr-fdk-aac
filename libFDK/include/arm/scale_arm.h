@@ -139,7 +139,7 @@ inline INT shiftRightSat<0>(INT src) {
 
 #endif /* compiler selection */
 
-#if defined(__ARM_ARCH_7_A__) || defined(__ARM_ARCH_8__)
+#if defined(__ARM_NEON__) || defined(__ARM_ARCH_8__)
 #define FUNCTION_scaleValueSaturate
 inline FIXP_DBL scaleValueSaturate(const FIXP_DBL value,
                                    INT scalefactor /* in range -31 ... +31 */
@@ -154,7 +154,7 @@ inline FIXP_DBL scaleValueSaturate(const FIXP_DBL value,
   return vqrshl_s32(v, s)[0];
 #endif
 }
-#endif // (__ARM_ARCH_7_A__) || defined(__ARM_ARCH_8__)
+#endif // (__ARM_NEON__) || defined(__ARM_ARCH_8__)
 
 
 #define FUNCTION_scaleValueInPlace

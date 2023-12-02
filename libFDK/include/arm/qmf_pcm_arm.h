@@ -104,7 +104,7 @@ amm-info@iis.fraunhofer.de
 #ifndef __INCLUDE_QMF_ARM__
 #define __INCLUDE_QMF_ARM__
 
-#if defined(__ARM_ARCH_7_A__) || defined(__ARM_ARCH_8__)
+#if defined(__ARM_NEON__) || defined(__ARM_ARCH_8__)
 #if defined(QMF_COEFF_16BIT) && QAS_BITS == 16 && !defined(_MSC_VER)
 
 static void qmfAnaPrototypeFirSlot(

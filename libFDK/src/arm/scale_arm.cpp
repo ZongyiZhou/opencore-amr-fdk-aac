@@ -104,7 +104,7 @@ amm-info@iis.fraunhofer.de
 #ifndef __INCLUDE_SCALE_ARM__
 #define __INCLUDE_SCALE_ARM__
 
-#if (defined(__ARM_ARCH_8__) || defined(__ARM_ARCH_7_A__)) && !defined(_MSC_VER)
+#if (defined(__ARM_ARCH_8__) || defined(__ARM_NEON__)) && !defined(_MSC_VER)
 #define FUNCTION_scaleValuesSaturate_DBL
 void scaleValuesSaturate(FIXP_DBL *vector, INT len, INT scalefactor) {
   /* Return if scalefactor is Zero */

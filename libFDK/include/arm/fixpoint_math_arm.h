@@ -274,7 +274,7 @@ FDK_INLINE FIXP_DBL fLog2(FIXP_DBL x_m, INT x_e) {
 inline int lrint_fast(double v) {
   int x;
   __asm__ (
-    "vcvtr.s32.f64 %0, %1\n\t"
+    "vcvtr.s32.f64 %0, %P1\n\t"
     :"=t"(x) :"w"(v)
   );
   return x;
