@@ -267,6 +267,29 @@ jobs:
           cmake . -GNinja -Bbuild -DCMAKE_BUILD_TYPE=Release -DBUILD_PROGRAMS=YES -DCMAKE_TOOLCHAIN_FILE=$NDK_ROOT/build/cmake/android.toolchain.cmake -DANDROID_NDK=$NDK_ROOT -DANDROID_ABI=armeabi-v7a -DANDROID_PLATFORM=android-23 -DANDROID_STL=c++_shared -DCMAKE_C_FLAGS="$FLAGS" -DCMAKE_CXX_FLAGS="$FLAGS"
           cmake --build build
 
+  linux-cross-arm-mips:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v4
+      - name: Install gcc cross compilers
+        run: sudo apt install -y g++-arm-linux-gnueabi g++-aarch64-linux-gnu g++-mips-linux-gnu ninja-build
+      - name: Build armv7-m
+        run: |
+          export FLAGS="-Werror -mcpu=cortex-m7 -mfloat-abi=softfp -Wno-stringop-overflow"
+          cmake . -GNinja -Bbuild_arm -DCMAKE_BUILD_TYPE=Release -DBUILD_PROGRAMS=YES -DCMAKE_CXX_COMPILER=arm-linux-gnueabi-g++ -DCMAKE_C_COMPILER=arm-linux-gnueabi-gcc -DCMAKE_C_FLAGS="$FLAGS" -DCMAKE_CXX_FLAGS="$FLAGS"
+          cmake --build build_arm
+      - name: Build armv8-a
+        run: |
+          export FLAGS="-Werror -mcpu=cortex-a57 -Wno-stringop-overflow"
+          cmake . -GNinja -Bbuild_arm64 -DCMAKE_BUILD_TYPE=Release -DBUILD_PROGRAMS=YES -DCMAKE_CXX_COMPILER=aarch64-linux-gnu-g++ -DCMAKE_C_COMPILER=aarch64-linux-gnu-gcc -DCMAKE_C_FLAGS="$FLAGS" -DCMAKE_CXX_FLAGS="$FLAGS"
+          cmake --build build_arm64
+      - name: Build mips32
+        run: |
+          export FLAGS="-Werror -march=mips32 -Wno-stringop-overflow"
+          cmake . -GNinja -Bbuild_mips -DCMAKE_BUILD_TYPE=Release -DBUILD_PROGRAMS=YES -DCMAKE_CXX_COMPILER=mips-linux-gnu-g++ -DCMAKE_C_COMPILER=mips-linux-gnu-gcc -DCMAKE_C_FLAGS="$FLAGS" -DCMAKE_CXX_FLAGS="$FLAGS"
+          cmake --build build_mips
+
   linux-ffmpeg:
     runs-on: ubuntu-latest
     steps:
